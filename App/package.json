@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "Azure Functions app that serves an embeddable Microsoft Bookings widget and the Microsoft Graph backend it talks to.",
   "private": true,
+  "type": "module",
   "main": "dist/src/functions/*.js",
   "engines": {
     "node": ">=22.0.0"
