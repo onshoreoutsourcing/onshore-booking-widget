@@ -149,7 +149,7 @@ function validateEntry(entry: unknown, index: number): TenantConfig {
   const obj = entry as Record<string, unknown>;
 
   const slug = requireString(obj, 'slug', index);
-  if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/i.test(slug)) {
+  if (!/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i.test(slug)) {
     throw new Error(
       `BOOKING_TENANTS[${index}].slug "${slug}" is not URL-safe. ` +
         'Use letters, digits, and hyphens only; must start and end with a letter or digit.'
