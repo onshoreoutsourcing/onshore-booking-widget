@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Booking Widget — Embed Test</title>
+
+  <!--
+    Plain-HTML test page. Demonstrates the canonical embed snippet
+    with no WordPress, no React, no build tooling — just an HTML file.
+
+    Usage:
+      1. Update the WIDGET_HOST URL in the script tag below to point at
+         your Functions App.
+      2. Update the data-tenant attribute to a slug configured in the
+         Functions App's BOOKING_TENANTS env var.
+      3. Open this file in a browser, or serve it via any static-file
+         server. The widget will load from the configured host and
+         render the booking form into the <div> below.
+
+    This file lives in source control as a permanent integration test.
+    It is also the reference for what the canonical embed snippet looks
+    like for site owners.
+  -->
+
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                   "Helvetica Neue", Arial, sans-serif;
+      max-width: 760px;
+      margin: 40px auto;
+      padding: 0 20px;
+      color: #1a1f36;
+      line-height: 1.5;
+    }
+    h1 { font-size: 28px; margin-bottom: 8px; }
+    p.lede { color: #5a6479; margin-top: 0; }
+    .embed-box {
+      margin: 32px 0;
+      padding: 24px;
+      background: #f7f9fc;
+      border: 1px solid #e1e8f0;
+      border-radius: 8px;
+    }
+    code {
+      background: #eef2f7;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Booking Widget — Embed Test</h1>
+  <p class="lede">
+    Plain HTML page demonstrating the canonical embed snippet. No WordPress,
+    no framework, no build tooling — just a script tag and a target element.
+  </p>
+
+  <p>
+    The canonical embed snippet is two lines. Site owners paste this anywhere
+    in their HTML to render the booking form. The <code>data-tenant</code>
+    attribute selects which configured property's bookings to display.
+  </p>
+
+  <div class="embed-box">
+    <strong>Embed snippet:</strong>
+<pre style="margin: 12px 0 0;"><code>&lt;div id="booking-widget" data-tenant="example-property"&gt;&lt;/div&gt;
+&lt;script src="https://onshorebookings.azurewebsites.net/bookingwidget.js"&gt;&lt;/script&gt;</code></pre>
+  </div>
+
+  <h2>Live test below</h2>
+  <p>
+    Update the <code>data-tenant</code> attribute to match a slug configured
+    in the Functions App's <code>BOOKING_TENANTS</code> env var, and update
+    the script <code>src</code> to your Functions App's URL before opening
+    this file:
+  </p>
+
+  <!-- BEGIN WIDGET EMBED -->
+  <div id="booking-widget" data-tenant="example-property"></div>
+  <script src="https://onshorebookings.azurewebsites.net/bookingwidget.js"></script>
+  <!-- END WIDGET EMBED -->
+
+  <hr style="margin: 48px 0;">
+
+  <p style="color: #5a6479; font-size: 13px;">
+    If the form does not render, check the browser console for errors.
+    Common issues:
+  </p>
+  <ul style="color: #5a6479; font-size: 13px;">
+    <li>Widget host URL is wrong or unreachable.</li>
+    <li><code>data-tenant</code> slug does not match any entry in the
+        <code>BOOKING_TENANTS</code> config.</li>
+    <li>This page's origin is not listed in the tenant's
+        <code>allowedOrigins</code> array.</li>
+    <li>The file is loaded as <code>file://</code>, which has no origin
+        and will fail origin validation. Serve via a local web server
+        (e.g. <code>npx http-server</code>) instead.</li>
+    <li>Widget bundle has not been built / deployed yet.</li>
+  </ul>
+
+</body>
+</html>

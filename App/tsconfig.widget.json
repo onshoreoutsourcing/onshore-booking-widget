@@ -1,0 +1,21 @@
+{
+  "_comment": "Type-check-only configuration for the browser-bound widget code. esbuild handles the actual bundling/emit (see build-widget.mjs). This config is used by `npm run typecheck:widget` to surface widget type errors during CI/CD without producing JS output.",
+  "compilerOptions": {
+    "target": "ES2018",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2018", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "isolatedModules": true
+  },
+  "include": ["src/widget/**/*.ts"]
+}

@@ -1,0 +1,595 @@
+/*
+ * Booking widget — embeddable stylesheet.
+ *
+ * All selectors are scoped under .bw-* to minimize collision with host-page
+ * styles. CSS custom properties at the top let host pages override colors
+ * and fonts without duplicating selectors. To theme:
+ *
+ *   #booking-widget {
+ *     --bw-color-primary: #1a3a8f;
+ *     --bw-font-family: "Inter", sans-serif;
+ *   }
+ *
+ * Algorithmic port of the WordPress plugin's `booking-form.css`. The
+ * literal values are tuned for a deep-navy palette by default; override
+ * via custom properties for a different look.
+ */
+
+.bw-container {
+  /* Color palette */
+  --bw-color-primary: #0a1f4d;
+  --bw-color-primary-hover: #1a3a8f;
+  --bw-color-primary-text: #ffffff;
+  --bw-color-text: #1a1f36;
+  --bw-color-text-muted: #5a6479;
+  --bw-color-bg: #ffffff;
+  --bw-color-bg-muted: #f6f8fc;
+  --bw-color-border: #e0e6f0;
+  --bw-color-border-active: #0a1f4d;
+  --bw-color-error: #b91c1c;
+  --bw-color-error-bg: #fef2f2;
+  --bw-color-success: #047857;
+  --bw-color-disabled-bg: #f0f2f7;
+  --bw-color-disabled-text: #aab2c0;
+
+  /* Typography */
+  --bw-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                    "Helvetica Neue", Arial, sans-serif;
+  --bw-font-size-base: 15px;
+  --bw-font-size-small: 13px;
+  --bw-font-size-large: 18px;
+  --bw-font-size-xlarge: 22px;
+
+  /* Sizing */
+  --bw-radius: 8px;
+  --bw-radius-small: 6px;
+  --bw-spacing-1: 4px;
+  --bw-spacing-2: 8px;
+  --bw-spacing-3: 12px;
+  --bw-spacing-4: 16px;
+  --bw-spacing-5: 20px;
+  --bw-spacing-6: 24px;
+  --bw-spacing-8: 32px;
+  --bw-shadow: 0 1px 3px rgba(15, 30, 70, 0.06), 0 1px 2px rgba(15, 30, 70, 0.04);
+
+  font-family: var(--bw-font-family);
+  font-size: var(--bw-font-size-base);
+  color: var(--bw-color-text);
+  line-height: 1.5;
+  background: var(--bw-color-bg);
+  border: 1px solid var(--bw-color-border);
+  border-radius: var(--bw-radius);
+  padding: var(--bw-spacing-6);
+  box-shadow: var(--bw-shadow);
+  max-width: 920px;
+  box-sizing: border-box;
+}
+
+.bw-container *,
+.bw-container *::before,
+.bw-container *::after {
+  box-sizing: inherit;
+}
+
+/* ---------------------------------------------------------------- */
+/* Loading / fallback / error states                                  */
+/* ---------------------------------------------------------------- */
+
+.bw-loading {
+  text-align: center;
+  padding: var(--bw-spacing-8) var(--bw-spacing-4);
+  color: var(--bw-color-text-muted);
+}
+
+.bw-fallback {
+  text-align: center;
+  padding: var(--bw-spacing-8) var(--bw-spacing-4);
+}
+
+.bw-fallback h3 {
+  margin: 0 0 var(--bw-spacing-3);
+  font-size: var(--bw-font-size-large);
+  color: var(--bw-color-text);
+}
+
+.bw-fallback p {
+  margin: 0;
+  color: var(--bw-color-text-muted);
+}
+
+.bw-error-banner {
+  background: var(--bw-color-error-bg);
+  color: var(--bw-color-error);
+  border: 1px solid var(--bw-color-error);
+  border-radius: var(--bw-radius-small);
+  padding: var(--bw-spacing-3) var(--bw-spacing-4);
+  margin-bottom: var(--bw-spacing-4);
+  font-size: var(--bw-font-size-small);
+}
+
+/* ---------------------------------------------------------------- */
+/* Step indicator                                                    */
+/* ---------------------------------------------------------------- */
+
+.bw-steps {
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--bw-spacing-6);
+  flex-wrap: wrap;
+  gap: var(--bw-spacing-2);
+}
+
+.bw-step {
+  display: flex;
+  align-items: center;
+  gap: var(--bw-spacing-2);
+  color: var(--bw-color-text-muted);
+}
+
+.bw-step-active {
+  color: var(--bw-color-primary);
+  font-weight: 600;
+}
+
+.bw-step-done {
+  color: var(--bw-color-success);
+}
+
+.bw-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--bw-color-bg-muted);
+  font-size: var(--bw-font-size-small);
+  font-weight: 600;
+}
+
+.bw-step-active .bw-step-num {
+  background: var(--bw-color-primary);
+  color: var(--bw-color-primary-text);
+}
+
+.bw-step-done .bw-step-num {
+  background: var(--bw-color-success);
+  color: var(--bw-color-primary-text);
+}
+
+.bw-step-connector {
+  width: 24px;
+  height: 1px;
+  background: var(--bw-color-border);
+}
+
+/* ---------------------------------------------------------------- */
+/* Step 1: Calendar + time panel layout                              */
+/* ---------------------------------------------------------------- */
+
+.bw-step1 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--bw-spacing-6);
+}
+
+@media (max-width: 720px) {
+  .bw-step1 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Calendar */
+
+.bw-calendar {
+  background: var(--bw-color-bg);
+}
+
+.bw-cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--bw-spacing-4);
+}
+
+.bw-cal-title {
+  font-weight: 600;
+  font-size: var(--bw-font-size-large);
+}
+
+.bw-cal-nav {
+  background: var(--bw-color-bg);
+  border: 1px solid var(--bw-color-border);
+  border-radius: var(--bw-radius-small);
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: var(--bw-color-text);
+}
+
+.bw-cal-nav:hover {
+  background: var(--bw-color-bg-muted);
+}
+
+.bw-cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--bw-spacing-1);
+  margin-bottom: var(--bw-spacing-2);
+}
+
+.bw-cal-weekday {
+  text-align: center;
+  font-size: var(--bw-font-size-small);
+  color: var(--bw-color-text-muted);
+  font-weight: 600;
+  padding: var(--bw-spacing-1);
+}
+
+.bw-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--bw-spacing-1);
+}
+
+.bw-cal-day {
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: var(--bw-radius-small);
+  font-size: var(--bw-font-size-base);
+  font-family: inherit;
+  cursor: pointer;
+  color: var(--bw-color-text);
+}
+
+.bw-cal-empty {
+  cursor: default;
+}
+
+.bw-cal-available:hover {
+  background: var(--bw-color-bg-muted);
+  border-color: var(--bw-color-border-active);
+}
+
+.bw-cal-unavailable {
+  color: var(--bw-color-disabled-text);
+  cursor: not-allowed;
+}
+
+.bw-cal-selected {
+  background: var(--bw-color-primary);
+  color: var(--bw-color-primary-text);
+  border-color: var(--bw-color-primary);
+}
+
+.bw-cal-selected:hover {
+  background: var(--bw-color-primary-hover);
+}
+
+.bw-cal-today {
+  font-weight: 700;
+}
+
+/* Time panel */
+
+.bw-times {
+  border-left: 1px solid var(--bw-color-border);
+  padding-left: var(--bw-spacing-6);
+}
+
+@media (max-width: 720px) {
+  .bw-times {
+    border-left: none;
+    border-top: 1px solid var(--bw-color-border);
+    padding-left: 0;
+    padding-top: var(--bw-spacing-4);
+  }
+}
+
+.bw-times-prompt,
+.bw-times-empty {
+  color: var(--bw-color-text-muted);
+  text-align: center;
+  padding: var(--bw-spacing-6) var(--bw-spacing-2);
+}
+
+.bw-times-date {
+  margin: 0 0 var(--bw-spacing-1);
+  font-size: var(--bw-font-size-small);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--bw-color-text);
+}
+
+.bw-times-tz {
+  margin: 0 0 var(--bw-spacing-4);
+  font-size: var(--bw-font-size-small);
+  color: var(--bw-color-text-muted);
+}
+
+.bw-times-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--bw-spacing-2);
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.bw-time-btn {
+  background: var(--bw-color-bg);
+  border: 1px solid var(--bw-color-border);
+  border-radius: var(--bw-radius-small);
+  padding: var(--bw-spacing-3);
+  font-size: var(--bw-font-size-base);
+  font-family: inherit;
+  cursor: pointer;
+  color: var(--bw-color-text);
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.bw-time-btn:hover {
+  border-color: var(--bw-color-border-active);
+  background: var(--bw-color-bg-muted);
+}
+
+.bw-time-selected {
+  background: var(--bw-color-primary);
+  border-color: var(--bw-color-primary);
+  color: var(--bw-color-primary-text);
+}
+
+.bw-time-selected:hover {
+  background: var(--bw-color-primary-hover);
+}
+
+/* ---------------------------------------------------------------- */
+/* Step 2: Form                                                     */
+/* ---------------------------------------------------------------- */
+
+.bw-section-heading {
+  font-size: var(--bw-font-size-large);
+  margin: 0 0 var(--bw-spacing-4);
+  color: var(--bw-color-text);
+}
+
+.bw-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bw-spacing-4);
+}
+
+.bw-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--bw-spacing-3);
+}
+
+@media (max-width: 540px) {
+  .bw-form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.bw-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bw-spacing-1);
+}
+
+.bw-field label {
+  font-size: var(--bw-font-size-small);
+  font-weight: 600;
+  color: var(--bw-color-text);
+}
+
+.bw-required-mark {
+  color: var(--bw-color-error);
+  margin-left: 2px;
+}
+
+.bw-field input,
+.bw-field textarea {
+  font-family: inherit;
+  font-size: var(--bw-font-size-base);
+  border: 1px solid var(--bw-color-border);
+  border-radius: var(--bw-radius-small);
+  padding: var(--bw-spacing-3);
+  background: var(--bw-color-bg);
+  color: var(--bw-color-text);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.bw-field input:focus,
+.bw-field textarea:focus {
+  outline: none;
+  border-color: var(--bw-color-primary);
+  box-shadow: 0 0 0 3px rgba(10, 31, 77, 0.10);
+}
+
+.bw-field textarea {
+  resize: vertical;
+  min-height: 96px;
+}
+
+.bw-honeypot {
+  /* Hidden from real users; bots that auto-fill the DOM see and fill it. */
+  position: absolute !important;
+  left: -10000px !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------- */
+/* Step 3: Confirmation summary                                     */
+/* ---------------------------------------------------------------- */
+
+.bw-summary {
+  background: var(--bw-color-bg-muted);
+  border-radius: var(--bw-radius);
+  padding: var(--bw-spacing-5);
+  margin-bottom: var(--bw-spacing-5);
+}
+
+.bw-summary-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: var(--bw-spacing-4);
+  padding: var(--bw-spacing-2) 0;
+  border-bottom: 1px solid var(--bw-color-border);
+}
+
+.bw-summary-row:last-child {
+  border-bottom: none;
+}
+
+.bw-summary-label {
+  color: var(--bw-color-text-muted);
+  font-size: var(--bw-font-size-small);
+  font-weight: 600;
+}
+
+.bw-summary-value {
+  color: var(--bw-color-text);
+  font-weight: 500;
+}
+
+/* ---------------------------------------------------------------- */
+/* Step 4: Success                                                  */
+/* ---------------------------------------------------------------- */
+
+.bw-step4 {
+  text-align: center;
+  padding: var(--bw-spacing-6) var(--bw-spacing-4);
+}
+
+.bw-success-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--bw-color-success);
+  color: var(--bw-color-primary-text);
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: var(--bw-spacing-4);
+}
+
+.bw-success-title {
+  font-size: var(--bw-font-size-xlarge);
+  margin: 0 0 var(--bw-spacing-3);
+  color: var(--bw-color-text);
+}
+
+.bw-success-when {
+  font-size: var(--bw-font-size-large);
+  color: var(--bw-color-text);
+  margin: 0 0 var(--bw-spacing-3);
+  font-weight: 600;
+}
+
+.bw-success-subtitle {
+  color: var(--bw-color-text-muted);
+  margin: 0 0 var(--bw-spacing-4);
+}
+
+.bw-success-link {
+  margin: 0;
+  color: var(--bw-color-text);
+}
+
+.bw-success-link a {
+  color: var(--bw-color-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------- */
+/* Buttons (shared)                                                  */
+/* ---------------------------------------------------------------- */
+
+.bw-button-row {
+  display: flex;
+  gap: var(--bw-spacing-3);
+  justify-content: flex-end;
+  margin-top: var(--bw-spacing-2);
+}
+
+@media (max-width: 540px) {
+  .bw-button-row {
+    flex-direction: column-reverse;
+  }
+  .bw-button-row > * {
+    width: 100%;
+  }
+}
+
+.bw-primary-btn,
+.bw-secondary-btn {
+  font-family: inherit;
+  font-size: var(--bw-font-size-base);
+  border-radius: var(--bw-radius-small);
+  padding: var(--bw-spacing-3) var(--bw-spacing-5);
+  cursor: pointer;
+  font-weight: 600;
+  border: 1px solid;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  min-height: 44px; /* Touch-target minimum */
+}
+
+.bw-primary-btn {
+  background: var(--bw-color-primary);
+  border-color: var(--bw-color-primary);
+  color: var(--bw-color-primary-text);
+}
+
+.bw-primary-btn:hover:not(:disabled) {
+  background: var(--bw-color-primary-hover);
+  border-color: var(--bw-color-primary-hover);
+}
+
+.bw-primary-btn:disabled {
+  background: var(--bw-color-disabled-bg);
+  border-color: var(--bw-color-disabled-bg);
+  color: var(--bw-color-disabled-text);
+  cursor: not-allowed;
+}
+
+.bw-secondary-btn {
+  background: var(--bw-color-bg);
+  border-color: var(--bw-color-border);
+  color: var(--bw-color-text);
+}
+
+.bw-secondary-btn:hover {
+  background: var(--bw-color-bg-muted);
+  border-color: var(--bw-color-border-active);
+}
+
+.bw-mt-16 {
+  margin-top: var(--bw-spacing-4);
+}
+
+/* ---------------------------------------------------------------- */
+/* Focus styles (accessibility)                                      */
+/* ---------------------------------------------------------------- */
+
+.bw-container button:focus-visible,
+.bw-container input:focus-visible,
+.bw-container textarea:focus-visible,
+.bw-container a:focus-visible {
+  outline: 2px solid var(--bw-color-primary);
+  outline-offset: 2px;
+}

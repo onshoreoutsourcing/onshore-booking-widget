@@ -1,0 +1,14 @@
+*.js.map
+*.ts
+.git*
+.vscode
+local.settings.json
+test
+tests
+*.test.ts
+*.test.js
+src/widget
+build-widget.mjs
+tsconfig.json
+.eslintrc*
+README.md

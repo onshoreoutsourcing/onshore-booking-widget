@@ -1,0 +1,37 @@
+# Node / TypeScript
+node_modules/
+dist/
+*.tsbuildinfo
+.npm/
+.eslintcache
+
+# Azure Functions
+local.settings.json
+.azure/
+bin/
+obj/
+
+# Build output
+App/dist/
+App/static/
+
+# Test artifacts
+coverage/
+.nyc_output/
+
+# Editor / OS
+
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+*.env
+
+# Secrets — should never be committed even if accidentally created
+*.pem
+*.pfx
+*-secret.*

@@ -1,0 +1,129 @@
+name: Build, Test, and Deploy
+
+# CI runs on every push to main and every pull request opened against main.
+# CD (deployment to the Functions App) runs only on push to main.
+#
+# Authentication to Azure uses OpenID Connect federated credentials — there
+# is no long-lived service-principal client secret stored in GitHub.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: # allow manual triggering from the Actions tab
+
+# Permissions for OIDC token issuance and reading the repo.
+permissions:
+  id-token: write
+  contents: read
+
+# Only one workflow run per branch can be active at a time. New pushes
+# cancel any in-flight runs for the same branch — so a hot-fix push
+# doesn't have to wait for an earlier slow build.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22.x'
+  FUNCTION_APP_NAME: onshorebookings
+  WORKING_DIRECTORY: App
+
+jobs:
+  # -------------------------------------------------------------------------
+  # CI: install, type-check, test. Runs on every push and PR.
+  # -------------------------------------------------------------------------
+  build-and-test:
+    name: Build and test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check (functions + widget)
+        run: npm run typecheck
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Build (widget bundle + TypeScript compile)
+        run: npm run build
+
+      - name: Verify build artifacts
+        run: |
+          test -f static/bookingwidget.js || (echo "ERROR: static/bookingwidget.js not produced" && exit 1)
+          test -f static/bookingwidget.css || (echo "ERROR: static/bookingwidget.css not produced" && exit 1)
+          test -d dist/src/functions || (echo "ERROR: dist/src/functions not produced" && exit 1)
+          echo "Build artifacts verified."
+
+      # Upload the deployable folder as a workflow artifact so the deploy
+      # job can pick it up without rebuilding. This also gives us a record
+      # of what was deployed for any given run.
+      - name: Prune devDependencies before upload
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: npm prune --production
+
+      - name: Upload deployable artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: function-app
+          path: |
+            ${{ env.WORKING_DIRECTORY }}
+            !${{ env.WORKING_DIRECTORY }}/src
+            !${{ env.WORKING_DIRECTORY }}/tests
+            !${{ env.WORKING_DIRECTORY }}/local.settings.json
+          retention-days: 14
+
+  # -------------------------------------------------------------------------
+  # CD: deploy to the Functions App. Only on push to main.
+  # -------------------------------------------------------------------------
+  deploy:
+    name: Deploy to Azure Functions
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # The "production" environment can be used to require manual approval
+    # before deployment. To enable, configure it in
+    # Settings → Environments → production → Required reviewers in the
+    # GitHub repo. Until configured, deploys proceed without approval.
+    environment: production
+
+    steps:
+      - name: Download deployable artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: function-app
+          path: ${{ env.WORKING_DIRECTORY }}
+
+      - name: Sign in to Azure (OIDC federated)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy to Functions App
+        uses: Azure/functions-action@v1
+        with:
+          app-name: ${{ env.FUNCTION_APP_NAME }}
+          package: ${{ env.WORKING_DIRECTORY }}
+          respect-funcignore: true
+
+      - name: Sign out of Azure
+        if: always()
+        run: az logout

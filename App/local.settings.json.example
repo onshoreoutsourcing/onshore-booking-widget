@@ -1,0 +1,20 @@
+{
+  "_comment": "Copy this file to local.settings.json and fill in real values for local development. local.settings.json is gitignored. In production, these values are set as Azure App Settings — none of them are secrets and none require Key Vault.",
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "FUNCTIONS_EXTENSION_VERSION": "~4",
+
+    "_comment_tenants": "Multi-tenant configuration. JSON array (single-line string in the env var). Each entry maps a public slug used in the embed snippet (data-tenant=\"...\") to a Microsoft Bookings business, a service ID under that business, and the origins permitted to embed it. The widget code never sees businessId or serviceId; site owners never type either. To add a new property, add an entry and restart the Functions app.",
+    "BOOKING_TENANTS": "[{\"slug\":\"example-property\",\"businessId\":\"BookingsBusiness@example.com\",\"serviceId\":\"00000000-0000-0000-0000-000000000000\",\"label\":\"Example Property\",\"allowedOrigins\":[\"https://example.com\",\"http://localhost:8080\"]}]",
+
+    "_comment_local_auth": "For LOCAL development only: when running outside Azure, the Functions runtime cannot use Managed Identity. Provide an Azure service principal via the AZURE_TENANT_ID, AZURE_CLIENT_ID, and AZURE_CLIENT_SECRET environment variables, or sign in via 'az login' and DefaultAzureCredential will pick up your developer credentials. None of these are needed in production — the deployed Functions App uses its system-assigned Managed Identity automatically.",
+    "AZURE_TENANT_ID": "00000000-0000-0000-0000-000000000000"
+  },
+  "Host": {
+    "LocalHttpPort": 7071,
+    "CORS": "*",
+    "CORSCredentials": false
+  }
+}
