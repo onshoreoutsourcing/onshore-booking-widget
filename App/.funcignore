@@ -1,52 +1,41 @@
 # .funcignore — files excluded from the deployed Function App package.
-# Syntax matches .gitignore. Anything matched here is stripped before the
-# runtime sees the package, regardless of what's in the deploy artifact.
+# Syntax matches .gitignore.
 #
-# What the Functions runtime actually NEEDS:
-#   host.json
-#   package.json
-#   node_modules/
-#   dist/        (compiled TypeScript)
-#   static/      (built widget bundle, served by ServeWidget)
-#
-# Everything else is dev/build/test infrastructure.
+# IMPORTANT: patterns without a leading "/" match recursively across the entire
+# tree, including inside node_modules. That's almost never what we want for
+# directory names like "src", "tests", "test", "coverage", because npm
+# packages frequently ship folders by those names that are loaded at runtime.
+# Anchor app-level paths with a leading "/" so they only apply to App/itself.
 
-# ── Source files (TypeScript is compiled to dist/; we don't ship sources) ──
-*.ts
-src/
+# ── App-level source (compiled to App/dist; not deployed) ──
+/src/
 
-# ── Source maps (debug-only; ship-time bloat for production) ──
+# ── App-level tests ──
+/tests/
+
+# ── App-level build/config tooling ──
+/build-widget.mjs
+/tsconfig.json
+/tsconfig.widget.json
+/vitest.config.ts
+/vitest.config.js
+/.eslintrc*
+/.eslintcache
+
+# ── App-level local-dev/sample files ──
+/local.settings.json
+/local.settings.json.example
+/README.md
+
+# ── Source maps (anywhere — debug artifacts, never needed at runtime) ──
 *.js.map
 
-# ── Tests ──
-test
-tests
-*.test.ts
-*.test.js
-
-# ── Build / config tooling that's only needed in CI/local dev ──
-build-widget.mjs
-tsconfig*.json
-vitest.config.*
-.eslintrc*
-.eslintcache
+# ── TypeScript incremental-compile cache (anywhere — never needed at runtime) ──
 *.tsbuildinfo
 
-# ── Coverage reports if any ever land in the artifact ──
-coverage/
-
-# ── Local-dev / sample / docs files ──
-local.settings.json
-local.settings.json.example
-README.md
-*.md
-
-# ── VCS / editor metadata ──
+# ── VCS / editor / OS metadata (anywhere — safe to exclude) ──
 .git*
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
-
-# ── Node toolchain caches ──
-node_modules/.cache/
