@@ -42,7 +42,7 @@
 
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from '@azure/functions';
 import { findTenantBySlug } from '../lib/tenant-config.js';
-import { createAppointment, GraphApiError } from '../lib/graph-client.js';
+import { createAppointment, GraphApiError, SlotNoLongerAvailableError } from '../lib/graph-client.js';
 import {
   validateOrigin,
   checkHoneypot,
@@ -316,6 +316,25 @@ function handleGraphError(
   slug: string,
   corsOrigin: string | undefined
 ): HttpResponseInit {
+  // Race-condition recovery: a required staff member became unavailable
+  // between slot listing and booking submission. Tell the visitor to pick
+  // a different time. The widget surfaces this message and stays on the
+  // confirm step so they can hit Back.
+  if (err instanceof SlotNoLongerAvailableError) {
+    context.info(
+      `[CreateBooking] tenant "${slug}": required staff no longer available for the submitted slot; returning 409.`
+    );
+    return jsonResponse(
+      409,
+      {
+        error: 'slot_unavailable',
+        message:
+          'The selected time is no longer available. Please go back and choose another time.',
+      },
+      corsOrigin
+    );
+  }
+
   if (err instanceof GraphApiError) {
     context.error(
       `[CreateBooking] Graph API error for tenant "${slug}" ` +

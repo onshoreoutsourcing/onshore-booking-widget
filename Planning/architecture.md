@@ -134,8 +134,8 @@ Two caches, all in-process to the Functions App (cleared on cold-start, cleared 
 | Cache | TTL | Purpose |
 |---|---|---|
 | Microsoft Graph access token | Refreshed automatically by `@azure/identity` | Token acquisition cost is amortized by the SDK; we don't manage it ourselves |
-| Bookings staff IDs | 1 hour | `getStaffAvailability` requires staff IDs; fetch them once and reuse |
-| Bookings business schedule | 1 hour | The General Availability schedule + scheduling policy parameters |
+| Bookings staff list (id + email) | 30 minutes | Required by `getStaffAvailability` and the per-tenant `requiredStaffEmails` resolver |
+| Bookings business schedule | 30 minutes | The General Availability schedule + scheduling policy parameters |
 
 In-process caching is sufficient for the expected volume. If a deploy or restart clears a cache, the next request rehydrates it (~200–500 ms first hit).
 
@@ -152,7 +152,7 @@ The system is multi-tenant from Phase 1: a single Functions App deployment can s
 <script src="https://onshorebookings.azurewebsites.net/bookingwidget.js"></script>
 ```
 
-**Configuration** lives in a single `BOOKING_TENANTS` App Setting (a JSON array). Each entry maps a public slug to a Bookings business, a service ID under that business, and the origins permitted to embed it:
+**Configuration** lives in a single `BOOKING_TENANTS` App Setting (a JSON array). Each entry maps a public slug to a Bookings business, a service ID under that business, and the origins permitted to embed it. An optional `requiredStaffEmails` field gates slot availability to specific staff members:
 
 ```json
 [
@@ -164,16 +164,29 @@ The system is multi-tenant from Phase 1: a single Functions App deployment can s
     "allowedOrigins": ["https://onshoreunifiedsupport.com"]
   },
   {
-    "slug": "it-services",
-    "businessId": "OnshoreITServices@onshoreoutsourcing.com",
-    "serviceId": "00000000-0000-0000-0000-000000000000",
-    "label": "Onshore IT Services",
-    "allowedOrigins": ["https://onshoreitservices.com"]
+    "slug": "meet-onshore",
+    "businessId": "MeetOnshore@onshoreoutsourcing.com",
+    "serviceId": "462b4aad-d880-4877-91fa-3a1a0422dd15",
+    "label": "Meet Onshore",
+    "allowedOrigins": ["https://meetonshore.com"],
+    "requiredStaffEmails": ["sales@onshoreoutsourcing.com"]
   }
 ]
 ```
 
 The `serviceId` is the GUID of a Microsoft Bookings service under the business — Bookings supports multiple services per business (e.g., "30-Minute Discovery Call" vs "60-Minute Deep Dive"). Each tenant binds to one. To find a service ID, query `GET /solutions/bookingBusinesses/{businessId}/services` against Microsoft Graph; the response includes the GUIDs.
+
+**`requiredStaffEmails` (optional)** — gates which Bookings staff members must be available for a slot to appear on the calendar. OR semantics: if multiple emails are listed, a slot is shown when at least one of them is free. Comparison against the Bookings staff list is case-insensitive.
+
+This solves a real Bookings limitation: by default, a slot appears whenever *any* configured staff member is free. For a "primary attendee + optional backup" workflow (e.g., a salesperson who must be on every call, with optional staff who can join if needed), you want slots gated by the salesperson's availability while still inviting everyone. `requiredStaffEmails` is that filter. All Bookings staff still receive the calendar invite; the field controls slot eligibility only.
+
+When the field is configured but no emails match a current Bookings staff member (typo, staff turnover), the runtime logs a warning and falls back to "any staff available" so visitors continue seeing availability rather than an empty calendar. Operators should monitor `[graph-client]` warnings in App Insights to catch this.
+
+When the field is omitted or empty, behavior is unchanged from the legacy "any staff available" semantics.
+
+**Note on attendee types:** Microsoft Bookings does not expose required-vs-optional attendee semantics via the Graph API. All staff appear as required attendees on the underlying Outlook calendar event. Optional staff who cannot attend a specific meeting can decline individually.
+
+**Re-check at booking-create time:** when `requiredStaffEmails` is configured, every booking submission triggers a fresh `getStaffAvailability` call against the requested time window before the appointment is created. If none of the required staff are still free (e.g. their calendar changed during the visitor's filling-out-the-form window), the API returns 409 with `error: "slot_unavailable"` and the visitor sees a "please choose another time" message. This adds ~150–300 ms to the booking-create round trip but eliminates double-booking the salesperson via the cache-staleness window. Tenants without `requiredStaffEmails` skip the re-check (no-op).
 
 **Runtime behavior:**
 

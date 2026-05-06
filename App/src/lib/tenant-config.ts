@@ -32,6 +32,29 @@ export interface TenantConfig {
    * scheme + host + port).
    */
   readonly allowedOrigins: readonly string[];
+  /**
+   * Optional: email addresses of staff members who must be available for a
+   * slot to appear on the booking calendar. OR semantics — if multiple
+   * emails are listed, a slot is shown when at least one of them is free.
+   *
+   * Comparison against the Bookings staff list is case-insensitive.
+   *
+   * If the field is omitted or empty, the system falls back to "any staff
+   * available" (the default Bookings behavior — a slot appears if any staff
+   * member is free).
+   *
+   * If the field is configured but none of the listed emails match a current
+   * Bookings staff member (e.g. typo, staff member removed), the runtime
+   * logs a warning and falls back to "any staff available" so visitors
+   * continue to see availability rather than an empty calendar.
+   *
+   * Note: this controls slot eligibility only. All Bookings staff members
+   * still receive the calendar invite when an appointment is created — the
+   * required-vs-optional distinction is for slot filtering, not for the
+   * Outlook attendee-type field. (Microsoft Bookings does not expose the
+   * required/optional attendee concept via the Graph API.)
+   */
+  readonly requiredStaffEmails?: readonly string[];
 }
 
 let cachedTenants: readonly TenantConfig[] | null = null;
@@ -178,12 +201,33 @@ function validateEntry(entry: unknown, index: number): TenantConfig {
     }
   }
 
+  // Optional: requiredStaffEmails. If absent, leave undefined.
+  // If present, must be an array of non-empty strings (empty array is allowed
+  // and treated as "no required staff configured").
+  let requiredStaffEmails: readonly string[] | undefined;
+  if (obj.requiredStaffEmails !== undefined) {
+    if (!Array.isArray(obj.requiredStaffEmails)) {
+      throw new Error(
+        `BOOKING_TENANTS[${index}].requiredStaffEmails must be an array if present.`
+      );
+    }
+    for (const [emailIdx, email] of obj.requiredStaffEmails.entries()) {
+      if (typeof email !== 'string' || email.trim() === '') {
+        throw new Error(
+          `BOOKING_TENANTS[${index}].requiredStaffEmails[${emailIdx}] must be a non-empty string.`
+        );
+      }
+    }
+    requiredStaffEmails = Object.freeze([...obj.requiredStaffEmails]) as readonly string[];
+  }
+
   return Object.freeze({
     slug,
     businessId,
     serviceId,
     label,
     allowedOrigins: Object.freeze([...allowedOrigins]) as readonly string[],
+    requiredStaffEmails,
   });
 }
 

@@ -94,6 +94,7 @@ The `data-tenant` attribute selects which Microsoft Bookings business this embed
 
 - `businessId` — the Microsoft Bookings business mailbox; never exposed to embed snippets
 - `serviceId` — the Bookings service GUID; same
+- `requiredStaffEmails` — optional operator-side configuration that limits which slots appear based on whether specific staff (e.g., a primary salesperson) are available. Site integrators don't need to know about this; it doesn't affect the embed snippet. The widget calendar simply shows the slots that match the filter.
 
 **To embed:** ask the operator of the Functions App which slug to use for your property. They'll tell you something like `unified-support` or `meet-onshore` and you put that exact value in `data-tenant`.
 

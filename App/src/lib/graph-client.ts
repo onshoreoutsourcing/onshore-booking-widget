@@ -38,8 +38,15 @@ import {
 const GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
 const GRAPH_SCOPE = 'https://graph.microsoft.com/.default';
 
-/** In-memory cache TTL for staff IDs and business schedule, in milliseconds. */
-const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+/**
+ * In-memory cache TTL for staff list and business schedule, in milliseconds.
+ *
+ * Shortened from the original 1 hour to 30 minutes to reduce the staleness
+ * window when the Bookings UI changes (schedule edits, staff add/remove,
+ * etc.). Trade-off is a small uptick in Graph API calls — acceptable at
+ * this volume.
+ */
+const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 /** Default slot duration when the business doesn't expose timeSlotInterval. */
 const DEFAULT_SLOT_MINUTES = 30;
@@ -77,8 +84,18 @@ const credential = new DefaultAzureCredential();
 /** Cached access token. `@azure/identity` handles refresh internally. */
 let cachedToken: AccessToken | null = null;
 
+/**
+ * One Microsoft Bookings staff member as we use it internally.
+ * The `email` is normalized to lowercase for case-insensitive matching
+ * against the tenant's `requiredStaffEmails` configuration.
+ */
+interface StaffMember {
+  id: string;
+  email: string;
+}
+
 interface TenantCache {
-  staffIds?: { value: string[]; expiresAt: number };
+  staff?: { value: StaffMember[]; expiresAt: number };
   schedule?: { value: BusinessSchedule | null; expiresAt: number };
 }
 
@@ -113,11 +130,34 @@ export async function getAvailableSlots(
   tenant: TenantConfig,
   daysAhead: number = DEFAULT_DAYS_AHEAD
 ): Promise<SlotMap> {
-  const staffIds = await getStaffIds(tenant);
-  if (staffIds.length === 0) {
+  const staff = await getStaffMembers(tenant);
+  if (staff.length === 0) {
     // No staff configured for this Bookings business — return an empty
     // map rather than erroring. The widget shows "no times available".
     return {};
+  }
+  const staffIds = staff.map((s) => s.id);
+
+  // Resolve requiredStaffEmails (if configured) to indices in the staff
+  // list. Two failure modes are handled per the operator-confirmed policy:
+  //   - Field absent or empty → fall back to "any staff available"
+  //     (legacy behavior; requiredStaffIndices stays null).
+  //   - Field present but no email matches a current Bookings staff
+  //     member → log a warning and fall back to "any staff available"
+  //     (Option B: prefer showing too many slots over an empty calendar).
+  let requiredStaffIndices: number[] | null = null;
+  if (tenant.requiredStaffEmails && tenant.requiredStaffEmails.length > 0) {
+    const resolved = resolveRequiredStaffIndices(staff, tenant.requiredStaffEmails);
+    if (resolved.length > 0) {
+      requiredStaffIndices = resolved;
+    } else {
+      console.warn(
+        `[graph-client] tenant "${tenant.slug}" has requiredStaffEmails ` +
+          'configured but none matched a current Bookings staff member ' +
+          '(check for typos or staff turnover). Falling back to ' +
+          '"any staff available" semantics.'
+      );
+    }
   }
 
   let schedule: BusinessSchedule | null = null;
@@ -160,7 +200,14 @@ export async function getAvailableSlots(
     windowEnd
   );
 
-  return buildSlots(availability, earliest, windowEnd, slotDurationMs, schedule);
+  return buildSlots(
+    availability,
+    earliest,
+    windowEnd,
+    slotDurationMs,
+    schedule,
+    requiredStaffIndices
+  );
 }
 
 export interface CreateAppointmentInput {
@@ -225,13 +272,32 @@ export async function createAppointment(
   const endDt = new Date(startDt.getTime() + slotMinutes * 60 * 1000);
   const customerTz = input.customerTimezone || 'UTC';
 
+  // Re-check that the tenant's required staff (if any) is still available
+  // for the requested window. Catches the race where the salesperson's
+  // calendar changed between when the slot was listed and when this
+  // booking was submitted.
+  //
+  // No-op when the tenant has no `requiredStaffEmails` configured.
+  // Permissive on transient Graph errors — the booking creation itself
+  // would surface real issues.
+  const stillAvailable = await verifyRequiredStaffStillAvailable(tenant, startDt, endDt);
+  if (!stillAvailable) {
+    throw new SlotNoLongerAvailableError();
+  }
+
   // Best-effort staff assignment — non-fatal if it fails.
+  // All Bookings staff are added to staffMemberIds (regardless of the
+  // tenant's requiredStaffEmails). Microsoft Bookings does not expose the
+  // required-vs-optional attendee distinction via the Graph API, so all
+  // staff appear as required attendees on the underlying calendar event.
+  // Staff who aren't required can decline if their schedule conflicts.
   let staffIds: string[] = [];
   try {
-    staffIds = await getStaffIds(tenant);
+    const staff = await getStaffMembers(tenant);
+    staffIds = staff.map((s) => s.id);
   } catch (err) {
     console.warn(
-      `[graph-client] getStaffIds failed for tenant "${tenant.slug}"; ` +
+      `[graph-client] getStaffMembers failed for tenant "${tenant.slug}"; ` +
         'creating appointment without staffMemberIds:',
       err
     );
@@ -343,6 +409,22 @@ export class GraphApiError extends Error {
   }
 }
 
+/**
+ * Thrown when a booking submission's required staff member became
+ * unavailable between slot listing and booking creation. The handler
+ * should translate this to a 409 Conflict response so the widget can
+ * prompt the user to choose a different time.
+ *
+ * Only emitted when the tenant has `requiredStaffEmails` configured;
+ * for other tenants, the system trusts the slot list.
+ */
+export class SlotNoLongerAvailableError extends Error {
+  constructor() {
+    super('The selected time is no longer available.');
+    this.name = 'SlotNoLongerAvailableError';
+  }
+}
+
 async function graphRequest<T>(
   method: 'GET' | 'POST',
   endpoint: string,
@@ -391,23 +473,161 @@ function getCacheBucket(slug: string): TenantCache {
   return bucket;
 }
 
-async function getStaffIds(tenant: TenantConfig): Promise<string[]> {
+async function getStaffMembers(tenant: TenantConfig): Promise<StaffMember[]> {
   const cache = getCacheBucket(tenant.slug);
-  if (cache.staffIds && cache.staffIds.expiresAt > Date.now()) {
-    return cache.staffIds.value;
+  if (cache.staff && cache.staff.expiresAt > Date.now()) {
+    return cache.staff.value;
   }
 
-  const response = await graphRequest<{ value?: Array<{ id?: string }> }>(
+  const response = await graphRequest<{
+    value?: Array<{ id?: string; emailAddress?: string }>;
+  }>(
     'GET',
     `/solutions/bookingBusinesses/${encodeURIComponent(tenant.businessId)}/staffMembers`
   );
 
-  const ids = (response.value ?? [])
-    .map((m) => m.id)
-    .filter((id): id is string => typeof id === 'string' && id.length > 0);
+  const staff: StaffMember[] = (response.value ?? [])
+    .filter((m): m is { id: string; emailAddress?: string } =>
+      typeof m.id === 'string' && m.id.length > 0
+    )
+    .map((m) => ({
+      id: m.id,
+      // Normalize to lowercase so case-insensitive matching against the
+      // tenant's requiredStaffEmails works without per-comparison toLowerCase.
+      email: (m.emailAddress ?? '').trim().toLowerCase(),
+    }));
 
-  cache.staffIds = { value: ids, expiresAt: Date.now() + CACHE_TTL_MS };
-  return ids;
+  cache.staff = { value: staff, expiresAt: Date.now() + CACHE_TTL_MS };
+  return staff;
+}
+
+/**
+ * Resolves a tenant's `requiredStaffEmails` to indices in the current Bookings
+ * staff list. The returned indices align with the order of staff members
+ * passed to getStaffAvailability, so they map directly to entries in the
+ * Graph response's `value` array.
+ *
+ * Returns an empty array if no emails match (caller should treat that as
+ * "fall back to any-staff availability" — the user-confirmed fallback for
+ * misconfiguration).
+ *
+ * Comparison is case-insensitive. Emails are trimmed before comparison.
+ */
+function resolveRequiredStaffIndices(
+  staff: readonly StaffMember[],
+  requiredEmails: readonly string[]
+): number[] {
+  const requiredSet = new Set(
+    requiredEmails.map((e) => e.trim().toLowerCase()).filter((e) => e !== '')
+  );
+  const indices: number[] = [];
+  for (let i = 0; i < staff.length; i++) {
+    if (requiredSet.has(staff[i].email)) {
+      indices.push(i);
+    }
+  }
+  return indices;
+}
+
+/**
+ * Re-checks whether at least one of the tenant's `requiredStaffEmails`
+ * members is still free for the requested booking window. Used at create
+ * time to catch the race where the staff member's calendar changed
+ * between when the slot was listed and when the visitor submitted the
+ * booking.
+ *
+ * Returns true when:
+ *   - The tenant has no `requiredStaffEmails` configured (no constraint)
+ *   - The configured emails don't match any current Bookings staff
+ *     (typo / staff turnover — same fallback as slot listing)
+ *   - At least one required staff member has an `available` window that
+ *     fully covers [startTime, endTime] AND no overlapping `busy` window
+ *
+ * Returns false only when required staff are configured AND none of
+ * them are free for the requested window. Caller throws
+ * `SlotNoLongerAvailableError` and the handler returns 409.
+ *
+ * If the underlying Graph call fails (network error, throttling, etc.),
+ * we return true to be permissive — the booking creation itself will
+ * surface any real issue, and we'd rather not block legitimate bookings
+ * because of a transient verify failure.
+ */
+async function verifyRequiredStaffStillAvailable(
+  tenant: TenantConfig,
+  startTime: Date,
+  endTime: Date
+): Promise<boolean> {
+  if (!tenant.requiredStaffEmails || tenant.requiredStaffEmails.length === 0) {
+    return true;
+  }
+
+  const staff = await getStaffMembers(tenant);
+  const requiredIndices = resolveRequiredStaffIndices(staff, tenant.requiredStaffEmails);
+  if (requiredIndices.length === 0) {
+    // No emails matched current staff — be permissive (matches the
+    // slot-listing fallback behavior). Caller's getAvailableSlots already
+    // logs the warning; no need to log again here.
+    return true;
+  }
+
+  const requiredStaffIds = requiredIndices.map((i) => staff[i].id);
+
+  // Pad the query window slightly so we don't miss a busy entry that
+  // starts a few seconds before or ends a few seconds after our slot.
+  const bufferMs = 60 * 1000; // 60 seconds
+  const queryStart = new Date(startTime.getTime() - bufferMs);
+  const queryEnd = new Date(endTime.getTime() + bufferMs);
+
+  let response: GetStaffAvailabilityResponse;
+  try {
+    response = await graphRequest<GetStaffAvailabilityResponse>(
+      'POST',
+      `/solutions/bookingBusinesses/${encodeURIComponent(tenant.businessId)}/getStaffAvailability`,
+      {
+        staffIds: requiredStaffIds,
+        startDateTime: { dateTime: formatGraphDateTime(queryStart), timeZone: 'UTC' },
+        endDateTime: { dateTime: formatGraphDateTime(queryEnd), timeZone: 'UTC' },
+      }
+    );
+  } catch (err) {
+    console.warn(
+      `[graph-client] verifyRequiredStaffStillAvailable: re-check failed for tenant "${tenant.slug}", being permissive:`,
+      err
+    );
+    return true;
+  }
+
+  // For each required staff, check if they have a covering `available`
+  // window AND no overlapping `busy` window. OR semantics across staff:
+  // any one of them being free is sufficient.
+  for (const staffEntry of response.value ?? []) {
+    let hasCoveringAvailableWindow = false;
+    let hasOverlappingBusy = false;
+
+    for (const item of staffEntry.availabilityItems ?? []) {
+      const itemStart = parseGraphDateTime(item.startDateTime);
+      const itemEnd = parseGraphDateTime(item.endDateTime);
+
+      if (item.status === 'available') {
+        // Available window must fully cover [startTime, endTime].
+        if (itemStart <= startTime && itemEnd >= endTime) {
+          hasCoveringAvailableWindow = true;
+        }
+      } else {
+        // Any non-available status (busy, tentative, oof, workingElsewhere)
+        // overlapping the slot disqualifies this staff.
+        if (itemStart < endTime && itemEnd > startTime) {
+          hasOverlappingBusy = true;
+        }
+      }
+    }
+
+    if (hasCoveringAvailableWindow && !hasOverlappingBusy) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 async function getBusinessSchedule(tenant: TenantConfig): Promise<BusinessSchedule | null> {
@@ -520,14 +740,16 @@ function buildSlots(
   earliest: Date,
   windowEnd: Date,
   slotDurationMs: number,
-  schedule: BusinessSchedule | null
+  schedule: BusinessSchedule | null,
+  requiredStaffIndices: number[] | null
 ): SlotMap {
   if (!response.value || response.value.length === 0) {
     return {};
   }
 
   // Per-staff: separate available and busy windows. A slot is bookable only
-  // when at least one staff is available AND that same staff is not busy.
+  // when at least one (eligible) staff is available AND that same staff is
+  // not busy.
   const perStaff: Array<{ available: DateRange[]; busy: DateRange[] }> = [];
   for (const staff of response.value) {
     const available: DateRange[] = [];
@@ -544,11 +766,26 @@ function buildSlots(
     perStaff.push({ available, busy });
   }
 
-  // Collect unique slot starts across all staff. Multiple staff being
-  // simultaneously available produces one slot, not duplicates.
+  // Determine which staff drive slot eligibility:
+  //   - If requiredStaffIndices is non-null and non-empty: only iterate
+  //     those staff. OR semantics — a slot appears when any one of the
+  //     required staff has it free.
+  //   - Otherwise: iterate all staff (the legacy "any staff" behavior).
+  // The caller is responsible for falling back to null when no required
+  // emails resolved (e.g. typo), so this branch is purely a slot-filtering
+  // decision.
+  const eligibleStaff =
+    requiredStaffIndices && requiredStaffIndices.length > 0
+      ? requiredStaffIndices
+          .map((i) => perStaff[i])
+          .filter((s): s is { available: DateRange[]; busy: DateRange[] } => s !== undefined)
+      : perStaff;
+
+  // Collect unique slot starts across all eligible staff. Multiple staff
+  // being simultaneously available produces one slot, not duplicates.
   const unique = new Set<string>();
 
-  for (const staff of perStaff) {
+  for (const staff of eligibleStaff) {
     for (const window of staff.available) {
       let cursor = roundUpToSlotBoundary(window.start, slotDurationMs);
       while (cursor < window.end) {

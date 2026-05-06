@@ -197,6 +197,152 @@ describe('loadTenants — error cases', () => {
 });
 
 // ---------------------------------------------------------------------------
+// loadTenants — requiredStaffEmails (new in this feature)
+// ---------------------------------------------------------------------------
+
+describe('loadTenants — requiredStaffEmails', () => {
+  it('accepts a tenant without requiredStaffEmails (field is undefined)', () => {
+    setTenants([validTenant({ slug: 'no-required' })]);
+    const tenant = loadTenants()[0];
+    expect(tenant.requiredStaffEmails).toBeUndefined();
+  });
+
+  it('accepts an empty requiredStaffEmails array (treated as no requirement)', () => {
+    setTenants([
+      {
+        slug: 'empty-required',
+        businessId: 'X@example.com',
+        serviceId: '00000000-0000-0000-0000-000000000000',
+        label: 'X',
+        allowedOrigins: ['https://x.com'],
+        requiredStaffEmails: [],
+      },
+    ]);
+    const tenant = loadTenants()[0];
+    expect(tenant.requiredStaffEmails).toEqual([]);
+  });
+
+  it('accepts a single required email', () => {
+    setTenants([
+      {
+        slug: 'one-required',
+        businessId: 'X@example.com',
+        serviceId: '00000000-0000-0000-0000-000000000000',
+        label: 'X',
+        allowedOrigins: ['https://x.com'],
+        requiredStaffEmails: ['sales@example.com'],
+      },
+    ]);
+    const tenant = loadTenants()[0];
+    expect(tenant.requiredStaffEmails).toEqual(['sales@example.com']);
+  });
+
+  it('accepts multiple required emails (OR semantics applied at slot-build time)', () => {
+    setTenants([
+      {
+        slug: 'multi-required',
+        businessId: 'X@example.com',
+        serviceId: '00000000-0000-0000-0000-000000000000',
+        label: 'X',
+        allowedOrigins: ['https://x.com'],
+        requiredStaffEmails: ['sales1@example.com', 'sales2@example.com'],
+      },
+    ]);
+    const tenant = loadTenants()[0];
+    expect(tenant.requiredStaffEmails).toEqual([
+      'sales1@example.com',
+      'sales2@example.com',
+    ]);
+  });
+
+  it('preserves the email casing as provided (matching is normalized at lookup time, not parse time)', () => {
+    setTenants([
+      {
+        slug: 'mixed-case',
+        businessId: 'X@example.com',
+        serviceId: '00000000-0000-0000-0000-000000000000',
+        label: 'X',
+        allowedOrigins: ['https://x.com'],
+        requiredStaffEmails: ['Sales@Example.COM'],
+      },
+    ]);
+    const tenant = loadTenants()[0];
+    expect(tenant.requiredStaffEmails).toEqual(['Sales@Example.COM']);
+  });
+
+  it('returns frozen requiredStaffEmails array (defensive immutability)', () => {
+    setTenants([
+      {
+        slug: 'frozen',
+        businessId: 'X@example.com',
+        serviceId: '00000000-0000-0000-0000-000000000000',
+        label: 'X',
+        allowedOrigins: ['https://x.com'],
+        requiredStaffEmails: ['a@example.com'],
+      },
+    ]);
+    const tenant = loadTenants()[0];
+    expect(Object.isFrozen(tenant.requiredStaffEmails)).toBe(true);
+  });
+
+  it('throws when requiredStaffEmails is not an array', () => {
+    setTenants([
+      {
+        slug: 'bad',
+        businessId: 'X@example.com',
+        serviceId: '00000000-0000-0000-0000-000000000000',
+        label: 'X',
+        allowedOrigins: ['https://x.com'],
+        requiredStaffEmails: 'not-an-array',
+      },
+    ]);
+    expect(() => loadTenants()).toThrow(/requiredStaffEmails must be an array/);
+  });
+
+  it('throws when requiredStaffEmails contains a non-string', () => {
+    setTenants([
+      {
+        slug: 'bad',
+        businessId: 'X@example.com',
+        serviceId: '00000000-0000-0000-0000-000000000000',
+        label: 'X',
+        allowedOrigins: ['https://x.com'],
+        requiredStaffEmails: ['ok@example.com', 42],
+      },
+    ]);
+    expect(() => loadTenants()).toThrow(/non-empty string/);
+  });
+
+  it('throws when requiredStaffEmails contains an empty string', () => {
+    setTenants([
+      {
+        slug: 'bad',
+        businessId: 'X@example.com',
+        serviceId: '00000000-0000-0000-0000-000000000000',
+        label: 'X',
+        allowedOrigins: ['https://x.com'],
+        requiredStaffEmails: ['', 'ok@example.com'],
+      },
+    ]);
+    expect(() => loadTenants()).toThrow(/non-empty string/);
+  });
+
+  it('throws when requiredStaffEmails contains a whitespace-only string', () => {
+    setTenants([
+      {
+        slug: 'bad',
+        businessId: 'X@example.com',
+        serviceId: '00000000-0000-0000-0000-000000000000',
+        label: 'X',
+        allowedOrigins: ['https://x.com'],
+        requiredStaffEmails: ['   '],
+      },
+    ]);
+    expect(() => loadTenants()).toThrow(/non-empty string/);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // findTenantBySlug
 // ---------------------------------------------------------------------------
 
