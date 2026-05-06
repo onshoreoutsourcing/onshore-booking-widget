@@ -52,16 +52,32 @@
   --bw-spacing-8: 32px;
   --bw-shadow: 0 1px 3px rgba(15, 30, 70, 0.06), 0 1px 2px rgba(15, 30, 70, 0.04);
 
+  /* Typography defaults — kept so internal content (step labels, form labels,
+     time buttons, etc.) renders consistently across host pages with widely
+     different font stacks. */
   font-family: var(--bw-font-family);
   font-size: var(--bw-font-size-base);
   color: var(--bw-color-text);
   line-height: 1.5;
-  background: var(--bw-color-bg);
-  border: 1px solid var(--bw-color-border);
-  border-radius: var(--bw-radius);
-  padding: var(--bw-spacing-6);
-  box-shadow: var(--bw-shadow);
-  max-width: 920px;
+
+  /* Outer container is intentionally flat: no background, border, shadow,
+     padding, or width constraint. The host page is expected to wrap the
+     widget in whatever frame it wants — a card, a section, full-bleed, etc.
+     To opt back into the legacy card look, host pages can set:
+       #booking-widget {
+         background: var(--bw-color-bg);
+         border: 1px solid var(--bw-color-border);
+         border-radius: var(--bw-radius);
+         padding: var(--bw-spacing-6);
+         box-shadow: var(--bw-shadow);
+         max-width: 920px;
+       }
+     The CSS custom properties above remain available for that purpose. */
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
   box-sizing: border-box;
 }
 
