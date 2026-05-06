@@ -1,0 +1,619 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Booking Widget — Visual Style Mockups</title>
+
+  <style>
+    /* ========================================================
+       Page chrome
+       ======================================================== */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                   "Helvetica Neue", Arial, sans-serif;
+      max-width: 1100px;
+      margin: 40px auto;
+      padding: 0 24px 80px;
+      color: #1a1f36;
+      background: #fafbfd;
+    }
+    h1 { font-size: 26px; margin: 0 0 8px; }
+    .lede { color: #5a6479; max-width: 720px; margin: 0 0 32px; }
+    .mockup-section { margin: 56px 0; }
+    .mockup-label {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #061551;
+      margin: 0 0 4px;
+    }
+    .mockup-name {
+      font-size: 22px;
+      font-weight: 700;
+      margin: 0 0 6px;
+    }
+    .mockup-description {
+      font-size: 14px;
+      color: #5a6479;
+      margin: 0 0 20px;
+      max-width: 720px;
+    }
+
+    /* ========================================================
+       Shared "fake widget" structure
+       ======================================================== */
+    .widget {
+      max-width: 920px;
+      font-size: 15px;
+      color: #1a1f36;
+      box-sizing: border-box;
+    }
+    .widget * { box-sizing: border-box; }
+
+    .w-steps {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .w-step { display: flex; align-items: center; gap: 8px; }
+    .w-step-num {
+      width: 28px; height: 28px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 600;
+    }
+    .w-step-connector { width: 24px; height: 1px; }
+
+    .w-body {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 24px;
+    }
+
+    .w-cal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .w-cal-title { font-weight: 600; font-size: 16px; }
+    .w-cal-nav {
+      width: 32px; height: 32px; border: 1px solid #e0e6f0;
+      border-radius: 6px; background: white; display: inline-flex;
+      align-items: center; justify-content: center;
+      cursor: pointer;
+    }
+
+    .w-cal-grid {
+      display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;
+    }
+    .w-cal-weekday {
+      text-align: center; font-size: 11px; color: #5a6479;
+      font-weight: 600; padding: 4px;
+    }
+    .w-cal-day {
+      aspect-ratio: 1 / 1;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 6px; font-size: 14px;
+    }
+    .w-cal-day.empty { color: transparent; }
+    .w-cal-day.unavailable { color: #aab2c0; }
+    .w-cal-day.available { color: #1a1f36; font-weight: 500; }
+    .w-cal-day.selected { background: #061551; color: white; font-weight: 700; }
+
+    .w-times-date {
+      font-size: 12px; font-weight: 700; letter-spacing: 0.04em;
+      margin: 0 0 4px;
+    }
+    .w-times-tz {
+      font-size: 12px; color: #5a6479; margin: 0 0 12px;
+    }
+    .w-times-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
+    }
+    .w-time {
+      padding: 10px; border: 1px solid #e0e6f0; border-radius: 6px;
+      background: white; text-align: center; font-size: 14px;
+    }
+    .w-time.selected {
+      background: #061551; color: white; border-color: #061551;
+    }
+
+    .w-button-row {
+      display: flex; justify-content: flex-end;
+      margin-top: 20px;
+    }
+    .w-button {
+      background: #061551; color: white;
+      padding: 10px 24px; border-radius: 6px;
+      font-size: 14px; font-weight: 600;
+      border: 1px solid #061551;
+    }
+
+    /* ========================================================
+       Variation 1: Navy header + square-cornered border
+       (closest literal interpretation of the request)
+       ======================================================== */
+    .v1 {
+      border: 1px solid #061551;
+      border-radius: 0;
+      background: white;
+      overflow: hidden;
+    }
+    .v1 .w-steps {
+      background: #061551;
+      color: white;
+      padding: 18px 24px;
+    }
+    .v1 .w-step { color: rgba(255,255,255,0.6); }
+    .v1 .w-step.active { color: white; font-weight: 600; }
+    .v1 .w-step-num { background: rgba(255,255,255,0.15); color: white; }
+    .v1 .w-step.active .w-step-num { background: white; color: #061551; }
+    .v1 .w-step-connector { background: rgba(255,255,255,0.3); }
+    .v1 .w-body { padding: 24px; }
+
+    /* ========================================================
+       Variation 2: Navy header + square-cornered with subtle shadow
+       (depth without ornament)
+       ======================================================== */
+    .v2 {
+      border-radius: 0;
+      background: white;
+      overflow: hidden;
+      box-shadow: 0 2px 12px rgba(15, 30, 70, 0.10);
+    }
+    .v2 .w-steps {
+      background: #061551;
+      color: white;
+      padding: 18px 24px;
+    }
+    .v2 .w-step { color: rgba(255,255,255,0.6); }
+    .v2 .w-step.active { color: white; font-weight: 600; }
+    .v2 .w-step-num { background: rgba(255,255,255,0.15); color: white; }
+    .v2 .w-step.active .w-step-num { background: white; color: #061551; }
+    .v2 .w-step-connector { background: rgba(255,255,255,0.3); }
+    .v2 .w-body { padding: 24px; }
+
+    /* ========================================================
+       Variation 3: Navy gradient header + square border
+       (header has more visual depth)
+       ======================================================== */
+    .v3 {
+      border: 1px solid #d0d7e2;
+      border-radius: 0;
+      background: white;
+      overflow: hidden;
+    }
+    .v3 .w-steps {
+      background: linear-gradient(135deg, #061551 0%, #1a3a8f 100%);
+      color: white;
+      padding: 18px 24px;
+    }
+    .v3 .w-step { color: rgba(255,255,255,0.65); }
+    .v3 .w-step.active { color: white; font-weight: 600; }
+    .v3 .w-step-num { background: rgba(255,255,255,0.15); color: white; }
+    .v3 .w-step.active .w-step-num { background: white; color: #061551; }
+    .v3 .w-step-connector { background: rgba(255,255,255,0.3); }
+    .v3 .w-body { padding: 24px; }
+
+    /* ========================================================
+       Variation 4: Navy header + slight 4px rounded corners
+       (square-feeling but a touch of softness)
+       ======================================================== */
+    .v4 {
+      border: 1px solid #d0d7e2;
+      border-radius: 4px;
+      background: white;
+      overflow: hidden;
+      box-shadow: 0 1px 4px rgba(15, 30, 70, 0.06);
+    }
+    .v4 .w-steps {
+      background: #061551;
+      color: white;
+      padding: 18px 24px;
+    }
+    .v4 .w-step { color: rgba(255,255,255,0.6); }
+    .v4 .w-step.active { color: white; font-weight: 600; }
+    .v4 .w-step-num { background: rgba(255,255,255,0.15); color: white; }
+    .v4 .w-step.active .w-step-num { background: white; color: #061551; }
+    .v4 .w-step-connector { background: rgba(255,255,255,0.3); }
+    .v4 .w-body { padding: 24px; }
+
+    /* ========================================================
+       Variation 5: Navy header floating above separate body rectangle
+       (header and body visually distinct, both square)
+       ======================================================== */
+    .v5 .w-steps {
+      background: #061551;
+      color: white;
+      padding: 18px 24px;
+      margin-bottom: 16px;
+    }
+    .v5 .w-step { color: rgba(255,255,255,0.6); }
+    .v5 .w-step.active { color: white; font-weight: 600; }
+    .v5 .w-step-num { background: rgba(255,255,255,0.15); color: white; }
+    .v5 .w-step.active .w-step-num { background: white; color: #061551; }
+    .v5 .w-step-connector { background: rgba(255,255,255,0.3); }
+    .v5 .w-body-wrap {
+      border: 1px solid #d0d7e2;
+      background: white;
+      padding: 24px;
+    }
+
+    /* ========================================================
+       Variation 6: Slim navy strip + bordered body
+       (header is a thin accent rather than a full bar)
+       ======================================================== */
+    .v6 {
+      border: 1px solid #d0d7e2;
+      border-radius: 0;
+      background: white;
+      overflow: hidden;
+    }
+    .v6 .w-steps {
+      background: white;
+      color: #1a1f36;
+      padding: 14px 24px;
+      border-top: 4px solid #061551;
+      border-bottom: 1px solid #d0d7e2;
+    }
+    .v6 .w-step { color: #5a6479; }
+    .v6 .w-step.active { color: #061551; font-weight: 600; }
+    .v6 .w-step-num { background: #f6f8fc; color: #5a6479; }
+    .v6 .w-step.active .w-step-num { background: #061551; color: white; }
+    .v6 .w-step-connector { background: #d0d7e2; }
+    .v6 .w-body { padding: 24px; }
+
+    /* ========================================================
+       Mobile responsiveness for the mockup file
+       ======================================================== */
+    @media (max-width: 720px) {
+      .w-body { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Booking Widget — Visual Style Mockups</h1>
+  <p class="lede">
+    Six variations of the title-bar / outer-frame styling. Each shows the
+    same widget content with different host-page CSS applied. Pick one
+    (or describe a tweak) and I'll wire that exact CSS into
+    <code>style.css</code> on the Schedule a Call page.
+  </p>
+
+  <!-- ========================================================
+       Variation 1
+       ======================================================== -->
+  <div class="mockup-section">
+    <p class="mockup-label">Variation 1</p>
+    <h2 class="mockup-name">Navy header + 1px navy border, fully square corners</h2>
+    <p class="mockup-description">
+      Closest literal interpretation of the request. Sharp corners everywhere.
+      The navy header reads as a header bar; the body sits below it inside the
+      same bordered rectangle. Border in matching navy reinforces the unified-card
+      feel.
+    </p>
+    <div class="widget v1">
+      <div class="w-steps">
+        <div class="w-step active"><span class="w-step-num">1</span><span>Date and Time</span></div>
+        <div class="w-step-connector"></div>
+        <div class="w-step"><span class="w-step-num">2</span><span>Your Info</span></div>
+        <div class="w-step-connector"></div>
+        <div class="w-step"><span class="w-step-num">3</span><span>Confirm</span></div>
+      </div>
+      <div class="w-body">
+        <div class="w-cal">
+          <div class="w-cal-header">
+            <button class="w-cal-nav">←</button>
+            <div class="w-cal-title">May 2026</div>
+            <button class="w-cal-nav">→</button>
+          </div>
+          <div class="w-cal-grid">
+            <div class="w-cal-weekday">SU</div><div class="w-cal-weekday">MO</div><div class="w-cal-weekday">TU</div><div class="w-cal-weekday">WE</div><div class="w-cal-weekday">TH</div><div class="w-cal-weekday">FR</div><div class="w-cal-weekday">SA</div>
+            <div class="w-cal-day empty">·</div><div class="w-cal-day empty">·</div><div class="w-cal-day empty">·</div><div class="w-cal-day empty">·</div><div class="w-cal-day empty">·</div><div class="w-cal-day unavailable">1</div><div class="w-cal-day unavailable">2</div>
+            <div class="w-cal-day unavailable">3</div><div class="w-cal-day unavailable">4</div><div class="w-cal-day unavailable">5</div><div class="w-cal-day unavailable">6</div><div class="w-cal-day unavailable">7</div><div class="w-cal-day available">8</div><div class="w-cal-day unavailable">9</div>
+            <div class="w-cal-day unavailable">10</div><div class="w-cal-day available">11</div><div class="w-cal-day available">12</div><div class="w-cal-day available">13</div><div class="w-cal-day available">14</div><div class="w-cal-day selected">15</div><div class="w-cal-day unavailable">16</div>
+            <div class="w-cal-day unavailable">17</div><div class="w-cal-day available">18</div><div class="w-cal-day available">19</div><div class="w-cal-day available">20</div><div class="w-cal-day available">21</div><div class="w-cal-day available">22</div><div class="w-cal-day unavailable">23</div>
+          </div>
+        </div>
+        <div class="w-times">
+          <p class="w-times-date">FRIDAY, MAY 15</p>
+          <p class="w-times-tz">Times shown in Eastern Daylight Time</p>
+          <div class="w-times-grid">
+            <div class="w-time">10:00 AM</div>
+            <div class="w-time">10:30 AM</div>
+            <div class="w-time">11:00 AM</div>
+            <div class="w-time">11:30 AM</div>
+            <div class="w-time selected">2:00 PM</div>
+            <div class="w-time">2:30 PM</div>
+            <div class="w-time">3:00 PM</div>
+            <div class="w-time">3:30 PM</div>
+          </div>
+          <div class="w-button-row"><div class="w-button">Continue</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       Variation 2
+       ======================================================== -->
+  <div class="mockup-section">
+    <p class="mockup-label">Variation 2</p>
+    <h2 class="mockup-name">Navy header + drop shadow, no border, fully square</h2>
+    <p class="mockup-description">
+      Same navy header but the outer card uses a subtle drop shadow instead
+      of a border. Lighter, slightly more modern. Still square.
+    </p>
+    <div class="widget v2">
+      <div class="w-steps">
+        <div class="w-step active"><span class="w-step-num">1</span><span>Date and Time</span></div>
+        <div class="w-step-connector"></div>
+        <div class="w-step"><span class="w-step-num">2</span><span>Your Info</span></div>
+        <div class="w-step-connector"></div>
+        <div class="w-step"><span class="w-step-num">3</span><span>Confirm</span></div>
+      </div>
+      <div class="w-body">
+        <div class="w-cal">
+          <div class="w-cal-header">
+            <button class="w-cal-nav">←</button>
+            <div class="w-cal-title">May 2026</div>
+            <button class="w-cal-nav">→</button>
+          </div>
+          <div class="w-cal-grid">
+            <div class="w-cal-weekday">SU</div><div class="w-cal-weekday">MO</div><div class="w-cal-weekday">TU</div><div class="w-cal-weekday">WE</div><div class="w-cal-weekday">TH</div><div class="w-cal-weekday">FR</div><div class="w-cal-weekday">SA</div>
+            <div class="w-cal-day empty">·</div><div class="w-cal-day empty">·</div><div class="w-cal-day empty">·</div><div class="w-cal-day empty">·</div><div class="w-cal-day empty">·</div><div class="w-cal-day unavailable">1</div><div class="w-cal-day unavailable">2</div>
+            <div class="w-cal-day unavailable">3</div><div class="w-cal-day unavailable">4</div><div class="w-cal-day unavailable">5</div><div class="w-cal-day unavailable">6</div><div class="w-cal-day unavailable">7</div><div class="w-cal-day available">8</div><div class="w-cal-day unavailable">9</div>
+            <div class="w-cal-day unavailable">10</div><div class="w-cal-day available">11</div><div class="w-cal-day available">12</div><div class="w-cal-day available">13</div><div class="w-cal-day available">14</div><div class="w-cal-day selected">15</div><div class="w-cal-day unavailable">16</div>
+            <div class="w-cal-day unavailable">17</div><div class="w-cal-day available">18</div><div class="w-cal-day available">19</div><div class="w-cal-day available">20</div><div class="w-cal-day available">21</div><div class="w-cal-day available">22</div><div class="w-cal-day unavailable">23</div>
+          </div>
+        </div>
+        <div class="w-times">
+          <p class="w-times-date">FRIDAY, MAY 15</p>
+          <p class="w-times-tz">Times shown in Eastern Daylight Time</p>
+          <div class="w-times-grid">
+            <div class="w-time">10:00 AM</div>
+            <div class="w-time">10:30 AM</div>
+            <div class="w-time">11:00 AM</div>
+            <div class="w-time">11:30 AM</div>
+            <div class="w-time selected">2:00 PM</div>
+            <div class="w-time">2:30 PM</div>
+            <div class="w-time">3:00 PM</div>
+            <div class="w-time">3:30 PM</div>
+          </div>
+          <div class="w-button-row"><div class="w-button">Continue</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       Variation 3
+       ======================================================== -->
+  <div class="mockup-section">
+    <p class="mockup-label">Variation 3</p>
+    <h2 class="mockup-name">Navy gradient header + light gray border, fully square</h2>
+    <p class="mockup-description">
+      Header gradient (#061551 → #1a3a8f) gives the navy bar more depth.
+      Outer border in light gray rather than navy keeps the eye on the
+      header. Still fully square.
+    </p>
+    <div class="widget v3">
+      <div class="w-steps">
+        <div class="w-step active"><span class="w-step-num">1</span><span>Date and Time</span></div>
+        <div class="w-step-connector"></div>
+        <div class="w-step"><span class="w-step-num">2</span><span>Your Info</span></div>
+        <div class="w-step-connector"></div>
+        <div class="w-step"><span class="w-step-num">3</span><span>Confirm</span></div>
+      </div>
+      <div class="w-body">
+        <div class="w-cal">
+          <div class="w-cal-header">
+            <button class="w-cal-nav">←</button>
+            <div class="w-cal-title">May 2026</div>
+            <button class="w-cal-nav">→</button>
+          </div>
+          <div class="w-cal-grid">
+            <div class="w-cal-weekday">SU</div><div class="w-cal-weekday">MO</div><div class="w-cal-weekday">TU</div><div class="w-cal-weekday">WE</div><div class="w-cal-weekday">TH</div><div class="w-cal-weekday">FR</div><div class="w-cal-weekday">SA</div>
+            <div class="w-cal-day empty">·</div><div class="w-cal-day empty">·</div><div class="w-cal-day empty">·</div><div class="w-cal-day empty">·</div><div class="w-cal-day empty">·</div><div class="w-cal-day unavailable">1</div><div class="w-cal-day unavailable">2</div>
+            <div class="w-cal-day unavailable">3</div><div class="w-cal-day unavailable">4</div><div class="w-cal-day unavailable">5</div><div class="w-cal-day unavailable">6</div><div class="w-cal-day unavailable">7</div><div class="w-cal-day available">8</div><div class="w-cal-day unavailable">9</div>
+            <div class="w-cal-day unavailable">10</div><div class="w-cal-day available">11</div><div class="w-cal-day available">12</div><div class="w-cal-day available">13</div><div class="w-cal-day available">14</div><div class="w-cal-day selected">15</div><div class="w-cal-day unavailable">16</div>
+            <div class="w-cal-day unavailable">17</div><div class="w-cal-day available">18</div><div class="w-cal-day available">19</div><div class="w-cal-day available">20</div><div class="w-cal-day available">21</div><div class="w-cal-day available">22</div><div class="w-cal-day unavailable">23</div>
+          </div>
+        </div>
+        <div class="w-times">
+          <p class="w-times-date">FRIDAY, MAY 15</p>
+          <p class="w-times-tz">Times shown in Eastern Daylight Time</p>
+          <div class="w-times-grid">
+            <div class="w-time">10:00 AM</div>
+            <div class="w-time">10:30 AM</div>
+            <div class="w-time">11:00 AM</div>
+            <div class="w-time">11:30 AM</div>
+            <div class="w-time selected">2:00 PM</div>
+            <div class="w-time">2:30 PM</div>
+            <div class="w-time">3:00 PM</div>
+            <div class="w-time">3:30 PM</div>
+          </div>
+          <div class="w-button-row"><div class="w-button">Continue</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       Variation 4
+       ======================================================== -->
+  <div class="mockup-section">
+    <p class="mockup-label">Variation 4</p>
+    <h2 class="mockup-name">Navy header + 4px rounded corners (subtle softening)</h2>
+    <p class="mockup-description">
+      Same as variation 1 but with a 4px corner radius. Reads as "mostly
+      square" rather than "perfectly sharp." Includes a faint shadow for
+      depth. Useful if the page's other UI elements use slight rounding.
+    </p>
+    <div class="widget v4">
+      <div class="w-steps">
+        <div class="w-step active"><span class="w-step-num">1</span><span>Date and Time</span></div>
+        <div class="w-step-connector"></div>
+        <div class="w-step"><span class="w-step-num">2</span><span>Your Info</span></div>
+        <div class="w-step-connector"></div>
+        <div class="w-step"><span class="w-step-num">3</span><span>Confirm</span></div>
+      </div>
+      <div class="w-body">
+        <div class="w-cal">
+          <div class="w-cal-header">
+            <button class="w-cal-nav">←</button>
+            <div class="w-cal-title">May 2026</div>
+            <button class="w-cal-nav">→</button>
+          </div>
+          <div class="w-cal-grid">
+            <div class="w-cal-weekday">SU</div><div class="w-cal-weekday">MO</div><div class="w-cal-weekday">TU</div><div class="w-cal-weekday">WE</div><div class="w-cal-weekday">TH</div><div class="w-cal-weekday">FR</div><div class="w-cal-weekday">SA</div>
+            <div class="w-cal-day empty">·</div><div class="w-cal-day empty">·</div><div class="w-cal-day empty">·</div><div class="w-cal-day empty">·</div><div class="w-cal-day empty">·</div><div class="w-cal-day unavailable">1</div><div class="w-cal-day unavailable">2</div>
+            <div class="w-cal-day unavailable">3</div><div class="w-cal-day unavailable">4</div><div class="w-cal-day unavailable">5</div><div class="w-cal-day unavailable">6</div><div class="w-cal-day unavailable">7</div><div class="w-cal-day available">8</div><div class="w-cal-day unavailable">9</div>
+            <div class="w-cal-day unavailable">10</div><div class="w-cal-day available">11</div><div class="w-cal-day available">12</div><div class="w-cal-day available">13</div><div class="w-cal-day available">14</div><div class="w-cal-day selected">15</div><div class="w-cal-day unavailable">16</div>
+            <div class="w-cal-day unavailable">17</div><div class="w-cal-day available">18</div><div class="w-cal-day available">19</div><div class="w-cal-day available">20</div><div class="w-cal-day available">21</div><div class="w-cal-day available">22</div><div class="w-cal-day unavailable">23</div>
+          </div>
+        </div>
+        <div class="w-times">
+          <p class="w-times-date">FRIDAY, MAY 15</p>
+          <p class="w-times-tz">Times shown in Eastern Daylight Time</p>
+          <div class="w-times-grid">
+            <div class="w-time">10:00 AM</div>
+            <div class="w-time">10:30 AM</div>
+            <div class="w-time">11:00 AM</div>
+            <div class="w-time">11:30 AM</div>
+            <div class="w-time selected">2:00 PM</div>
+            <div class="w-time">2:30 PM</div>
+            <div class="w-time">3:00 PM</div>
+            <div class="w-time">3:30 PM</div>
+          </div>
+          <div class="w-button-row"><div class="w-button">Continue</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       Variation 5
+       ======================================================== -->
+  <div class="mockup-section">
+    <p class="mockup-label">Variation 5</p>
+    <h2 class="mockup-name">Navy header bar above a separate body rectangle</h2>
+    <p class="mockup-description">
+      Header and body are visually distinct — the navy bar floats above
+      a separate bordered rectangle for the calendar / times. More
+      structured feel; the bar reads as a section title rather than a
+      card header.
+    </p>
+    <div class="widget v5">
+      <div class="w-steps">
+        <div class="w-step active"><span class="w-step-num">1</span><span>Date and Time</span></div>
+        <div class="w-step-connector"></div>
+        <div class="w-step"><span class="w-step-num">2</span><span>Your Info</span></div>
+        <div class="w-step-connector"></div>
+        <div class="w-step"><span class="w-step-num">3</span><span>Confirm</span></div>
+      </div>
+      <div class="w-body-wrap">
+        <div class="w-body">
+          <div class="w-cal">
+            <div class="w-cal-header">
+              <button class="w-cal-nav">←</button>
+              <div class="w-cal-title">May 2026</div>
+              <button class="w-cal-nav">→</button>
+            </div>
+            <div class="w-cal-grid">
+              <div class="w-cal-weekday">SU</div><div class="w-cal-weekday">MO</div><div class="w-cal-weekday">TU</div><div class="w-cal-weekday">WE</div><div class="w-cal-weekday">TH</div><div class="w-cal-weekday">FR</div><div class="w-cal-weekday">SA</div>
+              <div class="w-cal-day empty">·</div><div class="w-cal-day empty">·</div><div class="w-cal-day empty">·</div><div class="w-cal-day empty">·</div><div class="w-cal-day empty">·</div><div class="w-cal-day unavailable">1</div><div class="w-cal-day unavailable">2</div>
+              <div class="w-cal-day unavailable">3</div><div class="w-cal-day unavailable">4</div><div class="w-cal-day unavailable">5</div><div class="w-cal-day unavailable">6</div><div class="w-cal-day unavailable">7</div><div class="w-cal-day available">8</div><div class="w-cal-day unavailable">9</div>
+              <div class="w-cal-day unavailable">10</div><div class="w-cal-day available">11</div><div class="w-cal-day available">12</div><div class="w-cal-day available">13</div><div class="w-cal-day available">14</div><div class="w-cal-day selected">15</div><div class="w-cal-day unavailable">16</div>
+              <div class="w-cal-day unavailable">17</div><div class="w-cal-day available">18</div><div class="w-cal-day available">19</div><div class="w-cal-day available">20</div><div class="w-cal-day available">21</div><div class="w-cal-day available">22</div><div class="w-cal-day unavailable">23</div>
+            </div>
+          </div>
+          <div class="w-times">
+            <p class="w-times-date">FRIDAY, MAY 15</p>
+            <p class="w-times-tz">Times shown in Eastern Daylight Time</p>
+            <div class="w-times-grid">
+              <div class="w-time">10:00 AM</div>
+              <div class="w-time">10:30 AM</div>
+              <div class="w-time">11:00 AM</div>
+              <div class="w-time">11:30 AM</div>
+              <div class="w-time selected">2:00 PM</div>
+              <div class="w-time">2:30 PM</div>
+              <div class="w-time">3:00 PM</div>
+              <div class="w-time">3:30 PM</div>
+            </div>
+            <div class="w-button-row"><div class="w-button">Continue</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       Variation 6
+       ======================================================== -->
+  <div class="mockup-section">
+    <p class="mockup-label">Variation 6</p>
+    <h2 class="mockup-name">Slim navy accent strip + bordered body</h2>
+    <p class="mockup-description">
+      Less aggressive: a 4px navy strip across the top instead of a full
+      navy header. Step labels remain in the original colors. Subtle
+      branding without the strong header bar. Useful if the page already
+      has a navy hero and you don't want competing dark blocks.
+    </p>
+    <div class="widget v6">
+      <div class="w-steps">
+        <div class="w-step active"><span class="w-step-num">1</span><span>Date and Time</span></div>
+        <div class="w-step-connector"></div>
+        <div class="w-step"><span class="w-step-num">2</span><span>Your Info</span></div>
+        <div class="w-step-connector"></div>
+        <div class="w-step"><span class="w-step-num">3</span><span>Confirm</span></div>
+      </div>
+      <div class="w-body">
+        <div class="w-cal">
+          <div class="w-cal-header">
+            <button class="w-cal-nav">←</button>
+            <div class="w-cal-title">May 2026</div>
+            <button class="w-cal-nav">→</button>
+          </div>
+          <div class="w-cal-grid">
+            <div class="w-cal-weekday">SU</div><div class="w-cal-weekday">MO</div><div class="w-cal-weekday">TU</div><div class="w-cal-weekday">WE</div><div class="w-cal-weekday">TH</div><div class="w-cal-weekday">FR</div><div class="w-cal-weekday">SA</div>
+            <div class="w-cal-day empty">·</div><div class="w-cal-day empty">·</div><div class="w-cal-day empty">·</div><div class="w-cal-day empty">·</div><div class="w-cal-day empty">·</div><div class="w-cal-day unavailable">1</div><div class="w-cal-day unavailable">2</div>
+            <div class="w-cal-day unavailable">3</div><div class="w-cal-day unavailable">4</div><div class="w-cal-day unavailable">5</div><div class="w-cal-day unavailable">6</div><div class="w-cal-day unavailable">7</div><div class="w-cal-day available">8</div><div class="w-cal-day unavailable">9</div>
+            <div class="w-cal-day unavailable">10</div><div class="w-cal-day available">11</div><div class="w-cal-day available">12</div><div class="w-cal-day available">13</div><div class="w-cal-day available">14</div><div class="w-cal-day selected">15</div><div class="w-cal-day unavailable">16</div>
+            <div class="w-cal-day unavailable">17</div><div class="w-cal-day available">18</div><div class="w-cal-day available">19</div><div class="w-cal-day available">20</div><div class="w-cal-day available">21</div><div class="w-cal-day available">22</div><div class="w-cal-day unavailable">23</div>
+          </div>
+        </div>
+        <div class="w-times">
+          <p class="w-times-date">FRIDAY, MAY 15</p>
+          <p class="w-times-tz">Times shown in Eastern Daylight Time</p>
+          <div class="w-times-grid">
+            <div class="w-time">10:00 AM</div>
+            <div class="w-time">10:30 AM</div>
+            <div class="w-time">11:00 AM</div>
+            <div class="w-time">11:30 AM</div>
+            <div class="w-time selected">2:00 PM</div>
+            <div class="w-time">2:30 PM</div>
+            <div class="w-time">3:00 PM</div>
+            <div class="w-time">3:30 PM</div>
+          </div>
+          <div class="w-button-row"><div class="w-button">Continue</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr style="margin: 64px 0; border: 0; border-top: 1px solid #e0e6f0;">
+
+  <h2 style="font-size: 18px;">Picking one</h2>
+  <p style="color: #5a6479; max-width: 720px;">
+    Tell me which variation number you want (or describe a tweak — e.g.,
+    "Variation 1 but with a thicker border" or "Variation 4 but no shadow")
+    and I'll apply that exact CSS to the live theme. The current
+    deployed style (with the soft-rounded slate header) will be replaced
+    in the same edit.
+  </p>
+
+</body>
+</html>
