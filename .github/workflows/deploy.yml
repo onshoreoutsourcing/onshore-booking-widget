@@ -1,7 +1,8 @@
 name: Build, Test, and Deploy
 
-# CI runs on every push to main and every pull request opened against main.
-# CD (deployment to the Functions App) runs only on push to main.
+# CI runs on every push to main, every pull request opened against main, and
+# manual workflow_dispatch invocations. CD (deployment to the Functions App)
+# runs on push to main and on workflow_dispatch from main, but never on PRs.
 #
 # Authentication to Azure uses OpenID Connect federated credentials — there
 # is no long-lived service-principal client secret stored in GitHub.
@@ -79,11 +80,11 @@ jobs:
       # job can pick it up without rebuilding. This also gives us a record
       # of what was deployed for any given run.
       - name: Prune devDependencies before upload
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         run: npm prune --production
 
       - name: Upload deployable artifact
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v4
         with:
           name: function-app
@@ -101,7 +102,7 @@ jobs:
     name: Deploy to Azure Functions
     needs: build-and-test
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     # The "production" environment can be used to require manual approval
     # before deployment. To enable, configure it in
     # Settings → Environments → production → Required reviewers in the
