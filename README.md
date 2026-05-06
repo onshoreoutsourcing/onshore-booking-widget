@@ -30,6 +30,7 @@ In active development. The legacy Microsoft Bookings integration continues to ru
 
 | Document | Purpose |
 |---|---|
+| `LLM_INSTRUCTIONS.md` | Self-contained integration guide for site owners. Paste it into your LLM when asking for help embedding the widget on a specific platform. |
 | `Planning/architecture.md` | Full design and architecture rationale |
 | `Planning/decisions.md` | Architecture decisions log (ADRs) |
 | `Planning/cicd-setup.md` | End-to-end runbook for setting up the GitHub repo, Azure federated credentials, and automated deployment |

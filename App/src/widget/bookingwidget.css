@@ -183,6 +183,15 @@
 /* Step 1: Calendar + time panel layout                              */
 /* ---------------------------------------------------------------- */
 
+/* Outer wrapper that holds the two-column grid + the Continue button row.
+   Lets the button sit flush at the widget's bottom-right (matching steps
+   2 and 3) rather than being orphaned inside the time panel column. */
+.bw-step1-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bw-spacing-5);
+}
+
 .bw-step1 {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);

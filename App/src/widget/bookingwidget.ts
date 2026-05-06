@@ -378,9 +378,29 @@
   // ------------------------------------------------------------------------
 
   function renderStep1(): HTMLElement {
-    const wrap = el('div', { className: 'bw-step1' });
-    wrap.appendChild(renderCalendar());
-    wrap.appendChild(renderTimePanel());
+    // Outer wrapper holds the two-column grid (calendar + time panel) plus
+    // the Continue button row, so buttons sit at the bottom-right of the
+    // entire widget (matching steps 2 and 3) rather than orphaned inside
+    // the right column.
+    const wrap = el('div', { className: 'bw-step1-wrap' });
+
+    const grid = el('div', { className: 'bw-step1' });
+    grid.appendChild(renderCalendar());
+    grid.appendChild(renderTimePanel());
+    wrap.appendChild(grid);
+
+    if (state.selectedTime) {
+      const btnRow = el('div', { className: 'bw-button-row' });
+      const continueBtn = el(
+        'button',
+        { type: 'button', className: 'bw-primary-btn' },
+        [LABELS.continueButton]
+      );
+      continueBtn.addEventListener('click', () => goToStep(2));
+      btnRow.appendChild(continueBtn);
+      wrap.appendChild(btnRow);
+    }
+
     return wrap;
   }
 
@@ -502,15 +522,9 @@
     }
     panel.appendChild(grid);
 
-    if (state.selectedTime) {
-      const continueBtn = el(
-        'button',
-        { type: 'button', className: 'bw-primary-btn bw-mt-16' },
-        [LABELS.continueButton]
-      );
-      continueBtn.addEventListener('click', () => goToStep(2));
-      panel.appendChild(continueBtn);
-    }
+    // Continue button is rendered by renderStep1 at the widget's bottom-right
+    // alongside the calendar grid, not inside the time panel — keeps button
+    // placement consistent across steps 1, 2, and 3.
 
     return panel;
   }
