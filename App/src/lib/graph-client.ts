@@ -44,8 +44,26 @@ const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 /** Default slot duration when the business doesn't expose timeSlotInterval. */
 const DEFAULT_SLOT_MINUTES = 30;
 
-/** Default look-ahead window for slot fetches, in days. */
-const DEFAULT_DAYS_AHEAD = 30;
+/**
+ * Default look-ahead window for slot fetches, in days.
+ *
+ * The actual window shown to visitors is the smaller of this value and the
+ * tenant's Bookings `maximumAdvance` setting (typically P60D / 60 days).
+ * 90 here means we don't artificially cap below what Bookings allows; the
+ * Bookings setting is the real ceiling.
+ */
+const DEFAULT_DAYS_AHEAD = 90;
+
+/**
+ * Maximum window passed to a single getStaffAvailability call, in days.
+ *
+ * Microsoft Graph's getStaffAvailability endpoint has an undocumented cap on
+ * how wide a single (startDateTime, endDateTime) range can be. Empirically
+ * this has been in the 30-42 day range; values above that produce 5xx
+ * errors. We stay at 30 with a safety margin and fan out into multiple
+ * parallel calls when the requested window exceeds this.
+ */
+const STAFF_AVAILABILITY_CHUNK_DAYS = 30;
 
 /**
  * Single shared credential instance. `DefaultAzureCredential` falls through
@@ -135,14 +153,11 @@ export async function getAvailableSlots(
     }
   }
 
-  const availability = await graphRequest<GetStaffAvailabilityResponse>(
-    'POST',
-    `/solutions/bookingBusinesses/${encodeURIComponent(tenant.businessId)}/getStaffAvailability`,
-    {
-      staffIds,
-      startDateTime: { dateTime: formatGraphDateTime(now), timeZone: 'UTC' },
-      endDateTime: { dateTime: formatGraphDateTime(windowEnd), timeZone: 'UTC' },
-    }
+  const availability = await fetchStaffAvailabilityChunked(
+    tenant,
+    staffIds,
+    now,
+    windowEnd
   );
 
   return buildSlots(availability, earliest, windowEnd, slotDurationMs, schedule);
@@ -428,6 +443,76 @@ interface GetStaffAvailabilityResponse {
 interface DateRange {
   start: Date;
   end: Date;
+}
+
+/**
+ * Fetches staff availability over a window that may exceed Microsoft Graph's
+ * per-call limit by fanning out into parallel chunked calls and merging the
+ * results.
+ *
+ * Each chunk covers at most STAFF_AVAILABILITY_CHUNK_DAYS days. Calls are
+ * issued in parallel via Promise.all; the merged response concatenates each
+ * staff member's availabilityItems across chunks. Staff order is consistent
+ * across calls because the same staffIds array is sent in every request.
+ *
+ * If the requested window is already within the chunk size, this collapses
+ * to a single Graph call (no overhead vs. the unchunked version).
+ */
+async function fetchStaffAvailabilityChunked(
+  tenant: TenantConfig,
+  staffIds: string[],
+  start: Date,
+  end: Date
+): Promise<GetStaffAvailabilityResponse> {
+  const chunkMs = STAFF_AVAILABILITY_CHUNK_DAYS * 24 * 60 * 60 * 1000;
+
+  // Build the (chunkStart, chunkEnd) tuples covering [start, end].
+  const chunks: DateRange[] = [];
+  let cursor = start;
+  while (cursor < end) {
+    const chunkEnd = new Date(Math.min(cursor.getTime() + chunkMs, end.getTime()));
+    chunks.push({ start: cursor, end: chunkEnd });
+    cursor = chunkEnd;
+  }
+
+  // Fetch all chunks in parallel.
+  const responses = await Promise.all(
+    chunks.map((c) =>
+      graphRequest<GetStaffAvailabilityResponse>(
+        'POST',
+        `/solutions/bookingBusinesses/${encodeURIComponent(tenant.businessId)}/getStaffAvailability`,
+        {
+          staffIds,
+          startDateTime: { dateTime: formatGraphDateTime(c.start), timeZone: 'UTC' },
+          endDateTime: { dateTime: formatGraphDateTime(c.end), timeZone: 'UTC' },
+        }
+      )
+    )
+  );
+
+  // Single chunk: nothing to merge.
+  if (responses.length <= 1) {
+    return responses[0] ?? { value: [] };
+  }
+
+  // Merge: concatenate availabilityItems for each staff member across chunks.
+  // Graph returns staff in the same order as the input staffIds, so index
+  // alignment across responses is reliable.
+  const numStaff = responses[0].value?.length ?? 0;
+  const merged: GetStaffAvailabilityResponse = { value: [] };
+
+  for (let i = 0; i < numStaff; i++) {
+    type StaffEntry = NonNullable<GetStaffAvailabilityResponse['value']>[number];
+    type AvailabilityItems = NonNullable<StaffEntry['availabilityItems']>;
+    const allItems: AvailabilityItems = [];
+    for (const response of responses) {
+      const items = response.value?.[i]?.availabilityItems ?? [];
+      allItems.push(...items);
+    }
+    merged.value!.push({ availabilityItems: allItems });
+  }
+
+  return merged;
 }
 
 function buildSlots(

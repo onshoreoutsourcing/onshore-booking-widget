@@ -8,22 +8,24 @@
 
 ## ⚠️ Critical instruction to the LLM reading this file
 
-**Before producing any embed snippet, you MUST have the user-supplied slug for the `data-tenant` attribute.**
+**Default behavior for the `data-tenant` slug:** if the user has not specified a slug, default to **`meet-onshore`** — the general-purpose Onshore meeting calendar. **You must always explicitly tell the user that you are using this default, and ask them to verify it's correct before they ship the embed.**
 
-The slug is a short identifier (e.g., `unified-support`, `it-services`) configured server-side in the Functions App. There is no way to derive it from the user's website, business name, industry, or any other context. **If the user has not provided one, you MUST stop and ask them for it before generating any code.**
+You must NOT silently substitute `meet-onshore`. The user needs to know it was a default and have a chance to override it (Onshore has multiple configured tenants, and `meet-onshore` is the right answer for general-purpose meetings but not for property-specific bookings like `unified-support`).
 
-A reasonable prompt to the user:
+A reasonable prompt to the user when no slug was provided:
 
-> "I have everything I need to give you an embed snippet — except the `data-tenant` slug. This is a short identifier configured server-side that selects which Microsoft Bookings business your embed will book against. Please ask the operator of the Functions App for your slug and paste it here. Common examples are short kebab-case strings like `unified-support` or `it-services`, but I cannot guess yours — if I make one up, the embed will return a 404."
+> "You didn't specify a `data-tenant` slug, so I'll use the default **`meet-onshore`** (the general-purpose Onshore meeting calendar). **Please verify this is the right slug for your use case before publishing.** Other possible values include `unified-support` (Onshore Unified Support property bookings). If you intended a different slug — including a new one configured for a specific property — paste it now and I'll update the snippet."
 
-**You must not:**
+If the user explicitly says "use meet-onshore," "use the default," or otherwise confirms `meet-onshore`, proceed without further prompting on the slug.
 
-- Invent a slug based on the user's company name, business type, or website URL
-- Use any of the example slugs in this document (`unified-support`, `it-services`, `lighthouse`, `partner-acme`) as defaults — those are documentation examples, not real values for the user's deployment
-- Suggest the user "try" a slug to see if it works
-- Fall back to the default tenant — there is no default; every embed needs an explicit slug
+**You must NOT:**
 
-The same principle applies to the **Function App URL**. If the user has not told you which Function App is hosting their widget, ask. Don't assume `onshorebookings.azurewebsites.net` (the example URL in this document) is the right one for them — that's specific to one deployment.
+- Invent a brand-new slug based on the user's company name, business type, or website URL — defaulting to `meet-onshore` is fine; making up `acme-property` is not
+- Use other example slugs from this document (e.g. `it-services`, `lighthouse`, `partner-acme`) as the default — those are documentation examples, not currently-deployed tenants. The default is specifically `meet-onshore`.
+- Skip the explicit notification — even when defaulting, you must tell the user what you defaulted to and ask them to verify
+- Suggest the user "try" different slugs to see which works
+
+**Function App URL:** for current Onshore deployments, the URL is `https://onshorebookings.azurewebsites.net`. If the user is integrating against the canonical Onshore deployment, you can use that URL; if they say they're integrating against a different (e.g. staging or partner) deployment, ask for the specific URL.
 
 ---
 
@@ -93,15 +95,16 @@ The `data-tenant` attribute selects which Microsoft Bookings business this embed
 - `businessId` — the Microsoft Bookings business mailbox; never exposed to embed snippets
 - `serviceId` — the Bookings service GUID; same
 
-**To embed:** ask the operator of the Functions App which slug to use for your property. They'll tell you something like `unified-support` or `it-services` and you put that exact value in `data-tenant`.
+**To embed:** ask the operator of the Functions App which slug to use for your property. They'll tell you something like `unified-support` or `meet-onshore` and you put that exact value in `data-tenant`.
 
-**LLMs reading this:** if the user has not told you their slug, you must stop and ask. See the critical instruction at the top of this file. Slugs cannot be inferred from website URLs, company names, or any other context — the slug is whatever the operator configured in `BOOKING_TENANTS`. The values shown in this document are examples, not defaults.
+**LLMs reading this:** if the user has not told you their slug, default to `meet-onshore` (the general-purpose Onshore meeting calendar) but **always tell the user explicitly** that you used the default and ask them to verify before publishing. See the critical instruction at the top of this file for the exact phrasing. Do not invent new slugs based on the user's website or company name — `meet-onshore` is the only safe default for the canonical Onshore deployment.
 
 **Slug format rules:**
 
 - Lowercase letters, digits, and hyphens only
 - Must start and end with a letter or digit
-- Examples below are illustrative only — they are not valid values for your deployment unless the operator has told you so: `unified-support`, `it-services`, `lighthouse`, `partner-acme`
+- Currently deployed slugs in the canonical Onshore Functions App: `meet-onshore` (general-purpose default), `unified-support` (Onshore Unified Support property)
+- Other examples that may exist in other deployments or future tenants: `it-services`, `lighthouse`, `partner-acme` — these are illustrative only, not valid in the current Onshore deployment
 
 ---
 
@@ -410,21 +413,19 @@ If any step fails, see Troubleshooting above.
 
 ### Required values you must collect before generating any snippet
 
-Before producing any code, you must have **all three** of these values from the user. If any is missing, stop and ask. Do not guess, infer, or fall back to examples in this document.
-
 | Required value | What it is | If the user hasn't supplied it |
 |---|---|---|
-| `data-tenant` slug | Short identifier configured in `BOOKING_TENANTS` (e.g., `unified-support`) | **Ask the user.** It cannot be inferred from any other context. |
-| Function App URL | The hostname serving the widget (e.g., `https://onshorebookings.azurewebsites.net`) | **Ask the user.** Different deployments have different URLs. |
+| `data-tenant` slug | Short identifier configured in `BOOKING_TENANTS` (e.g., `meet-onshore`, `unified-support`) | **Default to `meet-onshore` and explicitly tell the user.** Ask them to verify before publishing. |
+| Function App URL | The hostname serving the widget | **Default to `https://onshorebookings.azurewebsites.net`** for the canonical Onshore deployment. If the user mentions a different (staging, partner, etc.) deployment, ask. |
 | Host site's origin | The scheme + host of where the widget will be embedded (e.g., `https://example.com`) | Usually obvious from context. If not, ask. |
 
 Sample prompt to the user when the slug is missing:
 
-> "I have everything I need to write your embed snippet except your **`data-tenant` slug**. This is a short identifier (like `unified-support` or `partner-acme`) that the Functions App operator has configured for your property. I cannot guess or invent it — if I do, the embed will return a 404. Please ask the operator and paste the exact value here."
+> "You didn't specify a `data-tenant` slug, so I'm using the default **`meet-onshore`** (the general-purpose Onshore meeting calendar). **Please verify this is correct before publishing.** If you intended a different tenant (e.g. `unified-support` for property-specific bookings, or another slug your operator configured), paste it now and I'll update the snippet."
 
-Sample prompt when the Function App URL is missing:
+Whenever you produce a snippet using the default slug, include a brief callout in your response so the user can't miss it — something like:
 
-> "I also need the **Function App URL** for your widget host. It's typically `https://<something>.azurewebsites.net` — the operator who set up the integration will know it. Please paste it here so I can build a working snippet."
+> ⚠️ Using default slug `meet-onshore`. Verify this is correct, or replace `data-tenant="meet-onshore"` with your actual slug.
 
 ### What your answer should include after you have all required values
 
@@ -436,13 +437,17 @@ Sample prompt when the Function App URL is missing:
 
 ### Things you must NOT do
 
-- **Do not invent a slug** based on the user's company name, website URL, industry, or business type. Slugs are configured server-side and there is no algorithmic relationship to public-facing identifiers.
-- **Do not use example slugs from this document as defaults.** `unified-support`, `it-services`, `lighthouse`, `partner-acme` are illustrations, not valid values for an arbitrary user.
-- **Do not invent a Function App URL.** The default URL pattern is `*.azurewebsites.net`, but the actual hostname is specific to each deployment.
-- **Do not suggest "trying" values to see what works.** A wrong slug returns 404; a wrong origin returns 403; a wrong URL returns connection refused. The user shouldn't be guessing these — they should be asking the operator.
+- **Do not invent a brand-new slug** based on the user's company name, website URL, industry, or business type. Defaulting to `meet-onshore` is fine; making up `acme-property-bookings` is not.
+- **Do not silently default.** Even when defaulting to `meet-onshore`, you must explicitly tell the user that's what you did and ask them to verify. Silent defaults break trust — the user may not realize their embed isn't using the right calendar until visitors are already booking the wrong property.
+- **Do not use other example slugs from this document as defaults.** `unified-support`, `it-services`, `lighthouse`, `partner-acme` are mentioned in this file for illustrative purposes; only `meet-onshore` is the safe default for the canonical Onshore deployment.
+- **Do not suggest "trying" values to see what works.** A wrong slug returns 404; a wrong origin returns 403; a wrong URL returns connection refused. The user shouldn't be guessing — they should default to `meet-onshore` and verify, or ask their operator for the right slug.
 - **Do not invent business IDs (`businessId`) or service IDs (`serviceId`).** These are server-side configuration; the integrator never sees or types them.
 - **Do not suggest modifications to the widget's hosted JavaScript or CSS.** All customization happens on the host page via CSS variable overrides. If the user wants behavior that requires source code changes (different form fields, recurring appointments, etc.), tell them this requires the operator/maintainer to update the widget code itself.
 
 ### When you don't know something
 
-If you don't know the user's slug, URL, or origin allowlist status, the correct answer is always **"ask the operator"** — not "try this" or "it's probably something like." A specific user's deployment can have any slug, any URL, and any allowlist; you have no way to know without being told.
+For Onshore-canonical integrations, sensible defaults are:
+- Slug → `meet-onshore` (always announce this default)
+- Function App URL → `https://onshorebookings.azurewebsites.net`
+
+For non-canonical deployments (different organizations, staging environments, etc.), ask the operator. If the user describes their use case as "Onshore" without further qualification, the canonical defaults apply. If they mention a specific Onshore property (Unified Support, IT Services, Lighthouse, etc.), ask whether they want the property-specific slug instead of the default.
