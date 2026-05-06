@@ -93,6 +93,10 @@ jobs:
             !${{ env.WORKING_DIRECTORY }}/src
             !${{ env.WORKING_DIRECTORY }}/tests
             !${{ env.WORKING_DIRECTORY }}/local.settings.json
+          # Include dotfiles in the artifact. Without this, .funcignore is
+          # excluded by upload-artifact@v4's default hidden-file filter, and
+          # Azure/functions-action then can't honor it during deploy.
+          include-hidden-files: true
           retention-days: 14
 
   # -------------------------------------------------------------------------

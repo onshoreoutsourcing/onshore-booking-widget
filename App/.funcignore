@@ -1,14 +1,52 @@
-*.js.map
+# .funcignore — files excluded from the deployed Function App package.
+# Syntax matches .gitignore. Anything matched here is stripped before the
+# runtime sees the package, regardless of what's in the deploy artifact.
+#
+# What the Functions runtime actually NEEDS:
+#   host.json
+#   package.json
+#   node_modules/
+#   dist/        (compiled TypeScript)
+#   static/      (built widget bundle, served by ServeWidget)
+#
+# Everything else is dev/build/test infrastructure.
+
+# ── Source files (TypeScript is compiled to dist/; we don't ship sources) ──
 *.ts
-.git*
-.vscode
-local.settings.json
+src/
+
+# ── Source maps (debug-only; ship-time bloat for production) ──
+*.js.map
+
+# ── Tests ──
 test
 tests
 *.test.ts
 *.test.js
-src/widget
+
+# ── Build / config tooling that's only needed in CI/local dev ──
 build-widget.mjs
-tsconfig.json
+tsconfig*.json
+vitest.config.*
 .eslintrc*
+.eslintcache
+*.tsbuildinfo
+
+# ── Coverage reports if any ever land in the artifact ──
+coverage/
+
+# ── Local-dev / sample / docs files ──
+local.settings.json
+local.settings.json.example
 README.md
+*.md
+
+# ── VCS / editor metadata ──
+.git*
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ── Node toolchain caches ──
+node_modules/.cache/
