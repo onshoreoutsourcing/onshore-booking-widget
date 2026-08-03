@@ -310,22 +310,25 @@ export async function createAppointment(
     );
   }
 
-  // Notes block, assembled bottom-up so the final order is:
-  //   Source: <origin>     (internal attribution — which site initiated)
-  //   Company: <company>
-  //   <visitor notes>
-  // Company and Source are each prepended only when present, matching the
-  // existing company-prepend pattern (Bookings customQuestions are avoided).
-  let notes = (input.notes ?? '').trim();
-  if (input.company && input.company.trim() !== '') {
-    const companyLine = `Company: ${input.company.trim()}`;
-    notes = notes ? `${companyLine}\n\n${notes}` : companyLine;
-  }
+  // Customer notes assembled as labeled segments joined by " |" + newline.
+  // The trailing pipe makes the block read cleanly in BOTH places Bookings
+  // renders it: where line breaks are preserved the fields stack vertically,
+  // and where newlines collapse to spaces (e.g. the Teams meeting body) they
+  // read on one line as "Source: … | Company: … | Details: …".
+  //
+  // Order: Source (which site initiated) → Company → Details (the visitor's
+  // message). Each segment is included only when present. The visitor's
+  // message is labeled "Details" rather than "Notes" because Bookings already
+  // titles the field itself "Notes". Bookings customQuestions are not used
+  // (would couple the code to per-business custom-question OIDs).
+  const noteSegments: string[] = [];
   const source = (input.sourceOrigin ?? '').trim();
-  if (source) {
-    const sourceLine = `Source: ${source}`;
-    notes = notes ? `${sourceLine}\n\n${notes}` : sourceLine;
-  }
+  if (source) noteSegments.push(`Source: ${source}`);
+  const company = (input.company ?? '').trim();
+  if (company) noteSegments.push(`Company: ${company}`);
+  const details = (input.notes ?? '').trim();
+  if (details) noteSegments.push(`Details: ${details}`);
+  const notes = noteSegments.join(' |\n');
 
   const body: Record<string, unknown> = {
     serviceId: tenant.serviceId,
