@@ -21,6 +21,10 @@
  *     "formLoadedMs":      37250                          (optional time-to-submit in ms)
  *   }
  *
+ * The embedding site is NOT taken from the body — it is derived server-side
+ * from the request `Origin` header and stamped onto the appointment notes as
+ * a "Source:" line, so the source cannot be spoofed by the client payload.
+ *
  * Response (200):
  *   {
  *     "success": true,
@@ -98,6 +102,14 @@ export async function createBookingHandler(
     ? '*'
     : request.headers.get('origin') ?? undefined;
 
+  // Actual Origin header (independent of the wildcard-CORS decision above),
+  // recorded on the appointment so operators can tell which host site
+  // initiated a booking when multiple sites share one tenant/calendar.
+  // For non-wildcard tenants this value is already constrained to the
+  // tenant's allowedOrigins by the validateOrigin check below; sanitized
+  // and length-capped regardless as defense-in-depth.
+  const requestOrigin = sanitizeString(request.headers.get('origin'), 200);
+
   // 3. Origin allowlist.
   if (!validateOrigin(tenant, request)) {
     context.warn(
@@ -155,6 +167,7 @@ export async function createBookingHandler(
       notes: validated.value.notes,
       startTime: validated.value.startTime,
       customerTimezone: validated.value.customerTimezone,
+      sourceOrigin: requestOrigin,
     });
     return jsonResponse(
       200,

@@ -309,6 +309,41 @@ Documentation files (`Planning/`, `README.md`, `Infra/README.md`) describe an On
 
 ---
 
+## ADR-0015: Stamp the originating site (request Origin) onto appointment notes
+
+**Date:** 2026-06-11
+**Status:** Accepted
+
+**Context.** Multiple host sites embed the widget under the **same** tenant slug (`meet-onshore`) and therefore feed one shared Microsoft Bookings business/calendar. Because the appointment carries no source attribution, operators receiving a Teams meeting cannot tell which site initiated a given booking (e.g. `www.onshoreunified.com` vs `www.meetonshore.com`). The "Customer Info → Notes" block, the "Service name", and everything else are identical across sites.
+
+**Decision.** Record the embedding site on each appointment, derived server-side from the request `Origin` header, and prepend it to the customer notes as a `Source:` line — using the same notes-prepend mechanism already used for `Company:`. Final notes order:
+
+```
+Source: https://www.onshoreunified.com
+Company: <company, if provided>
+<visitor notes>
+```
+
+The origin is captured in `CreateBooking` (sanitized, length-capped at 200) and passed to `createAppointment` as `sourceOrigin`. Empty/absent Origin → no `Source:` line (graceful).
+
+**Alternatives.**
+- *Split the shared tenant into per-site tenants/services.* Cleaner data model (separate calendars, staff, `allowedOrigins`, and a distinct "Service name" per site), but a larger operational change and the wrong choice when one shared calendar is explicitly wanted. Not mutually exclusive with this ADR — a future split can keep the source stamp as belt-and-suspenders.
+- *Widget-supplied `data-source` attribute.* Spoofable and redundant; the server already has the trustworthy `Origin` header (validated against `allowedOrigins` for non-wildcard tenants).
+- *Bookings customQuestions / "Additional Information" section.* Deliberately avoided project-wide to not couple to a specific custom-question OID configuration (see `createAppointment` doc comment).
+
+**Rationale.**
+- Solves the immediate problem without restructuring tenants; works precisely because it does not depend on sites having distinct tenants.
+- Server-derived, so it cannot be spoofed by the request body.
+- Matches the existing `Company:` prepend pattern — small, low-risk, no new Graph fields.
+- **Brand-neutral (ADR-0014 preserved):** the code stamps the raw `Origin` URL, which arrives in the request; no company names or site labels are hardcoded in source. A friendly origin→label mapping, if ever wanted, would live in `BOOKING_TENANTS` config, not code.
+
+**Consequences.**
+- `CreateAppointmentInput` gains an optional `sourceOrigin` field.
+- The `Source:` line is visible to anyone who can read the appointment/meeting (internal staff). It exposes only the host site's public origin — no additional PII.
+- For wildcard-origin tenants (`allowedOrigins: ["*"]`) the stamped value is whatever origin the browser sent; the sanitize + length cap bounds it.
+
+---
+
 ## Open decisions (not yet ADRs)
 
 | Topic | Status |

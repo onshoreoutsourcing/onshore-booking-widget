@@ -221,6 +221,13 @@ export interface CreateAppointmentInput {
   startTime: string;
   /** IANA timezone for the customer (e.g. "America/Chicago"). */
   customerTimezone: string;
+  /**
+   * Origin of the embedding site (the request `Origin` header), used to
+   * record which host site initiated the booking when multiple sites share
+   * one tenant / Bookings calendar. Prepended to the appointment notes as a
+   * "Source:" line. Empty/absent when the header was not present.
+   */
+  sourceOrigin?: string;
 }
 
 export interface CreateAppointmentResult {
@@ -303,11 +310,21 @@ export async function createAppointment(
     );
   }
 
-  // Notes: prepend company if present.
+  // Notes block, assembled bottom-up so the final order is:
+  //   Source: <origin>     (internal attribution — which site initiated)
+  //   Company: <company>
+  //   <visitor notes>
+  // Company and Source are each prepended only when present, matching the
+  // existing company-prepend pattern (Bookings customQuestions are avoided).
   let notes = (input.notes ?? '').trim();
   if (input.company && input.company.trim() !== '') {
     const companyLine = `Company: ${input.company.trim()}`;
     notes = notes ? `${companyLine}\n\n${notes}` : companyLine;
+  }
+  const source = (input.sourceOrigin ?? '').trim();
+  if (source) {
+    const sourceLine = `Source: ${source}`;
+    notes = notes ? `${sourceLine}\n\n${notes}` : sourceLine;
   }
 
   const body: Record<string, unknown> = {
