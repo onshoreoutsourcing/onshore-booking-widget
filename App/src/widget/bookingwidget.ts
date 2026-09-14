@@ -9,6 +9,12 @@
  *   <div id="booking-widget" data-tenant="<slug>"></div>
  *   <script src="https://<host>/bookingwidget.js"></script>
  *
+ * Optional localization:
+ *   <div id="booking-widget" data-tenant="<slug>" data-lang="fr"></div>
+ *   Supported: "en" (default) and "fr". When data-lang is absent the widget
+ *   falls back to the host document's <html lang>, then navigator.language,
+ *   then English. See detectLocale.
+ *
  * Steps:
  *   1. Date and Time      — calendar grid + time slot panel
  *   2. Your Info          — contact form (first/last/email + optional)
@@ -57,45 +63,151 @@
   /** Captured at script-init time; sent in the booking submission for the time-to-submit guard. */
   const FORM_INIT_TIME_MS = Date.now();
 
-  /** Visible labels. Pulled out so deployments can later inject overrides via a config attribute. */
-  const LABELS = {
-    loadingTimes: 'Loading available times…',
-    fallbackTitle: 'Online scheduling temporarily unavailable',
-    fallbackBody: 'Please try again in a moment, or contact us directly to schedule a call.',
-    step1Title: 'Date and Time',
-    step2Title: 'Your Info',
-    step3Title: 'Confirm',
-    step4Title: 'Confirmed',
-    monthsLong: ['January', 'February', 'March', 'April', 'May', 'June',
-                 'July', 'August', 'September', 'October', 'November', 'December'],
-    weekdaysShort: ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'],
-    weekdaysLong: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
-    pickADate: 'Pick a date to see available times.',
-    noTimesForDate: 'No available times on this date.',
-    timesShownIn: 'Times shown in {tz} (your local time)',
+  /**
+   * Visible labels, per locale. The widget picks one dictionary at init based
+   * on the detected locale (see detectLocale); `LABELS` is then pointed at it.
+   * Keeping every user-facing string here (and nowhere else) is what makes the
+   * widget translatable without touching render code.
+   *
+   * The two dictionaries MUST stay structurally identical — same keys, same
+   * array lengths (12 months, 7 weekdays, Sunday-first to match the calendar
+   * grid offset). Only the string values differ.
+   *
+   * French copy note: labels never receive an appended colon in the render code
+   * (values live in a separate element), so French colon typography only
+   * applies inside strings that contain their own colon — e.g. successJoinPrefix
+   * uses a non-breaking space before ':' per fr-typography (U+00A0). French copy
+   * is a best-effort first pass pending review by the French-lexicon owner.
+   */
+  type LabelSet = {
+    loadingTimes: string;
+    fallbackTitle: string;
+    fallbackBody: string;
+    step1Title: string;
+    step2Title: string;
+    step3Title: string;
+    step4Title: string;
+    monthsLong: string[];
+    weekdaysShort: string[];
+    weekdaysLong: string[];
+    pickADate: string;
+    noTimesForDate: string;
+    timesShownIn: string;
     fields: {
-      firstName: 'First Name',
-      lastName: 'Last Name',
-      email: 'Work Email',
-      company: 'Company',
-      phone: 'Phone',
-      notes: 'Tell us about your situation',
-    },
-    required: 'required',
-    continueButton: 'Continue',
-    backButton: 'Back',
-    confirmButton: 'Confirm Booking',
-    submittingButton: 'Submitting…',
-    successTitle: 'Booking Confirmed',
-    successSubtitle: 'A calendar invite with a Microsoft Teams link will be sent to your email.',
-    successJoinPrefix: 'Or join the meeting directly: ',
-    summaryHeading: 'Review your booking',
-    summaryDate: 'Date',
-    summaryTime: 'Time',
-    summaryName: 'Name',
-    summaryEmail: 'Email',
-    summaryCompany: 'Company',
+      firstName: string;
+      lastName: string;
+      email: string;
+      company: string;
+      phone: string;
+      notes: string;
+    };
+    required: string;
+    continueButton: string;
+    backButton: string;
+    confirmButton: string;
+    submittingButton: string;
+    successTitle: string;
+    successSubtitle: string;
+    successJoinPrefix: string;
+    summaryHeading: string;
+    summaryDate: string;
+    summaryTime: string;
+    summaryName: string;
+    summaryEmail: string;
+    summaryCompany: string;
   };
+
+  const DICT: Record<'en' | 'fr', LabelSet> = {
+    en: {
+      loadingTimes: 'Loading available times…',
+      fallbackTitle: 'Online scheduling temporarily unavailable',
+      fallbackBody: 'Please try again in a moment, or contact us directly to schedule a call.',
+      step1Title: 'Date and Time',
+      step2Title: 'Your Info',
+      step3Title: 'Confirm',
+      step4Title: 'Confirmed',
+      monthsLong: ['January', 'February', 'March', 'April', 'May', 'June',
+                   'July', 'August', 'September', 'October', 'November', 'December'],
+      weekdaysShort: ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'],
+      weekdaysLong: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+      pickADate: 'Pick a date to see available times.',
+      noTimesForDate: 'No available times on this date.',
+      timesShownIn: 'Times shown in {tz} (your local time)',
+      fields: {
+        firstName: 'First Name',
+        lastName: 'Last Name',
+        email: 'Work Email',
+        company: 'Company',
+        phone: 'Phone',
+        notes: 'Tell us about your situation',
+      },
+      required: 'required',
+      continueButton: 'Continue',
+      backButton: 'Back',
+      confirmButton: 'Confirm Booking',
+      submittingButton: 'Submitting…',
+      successTitle: 'Booking Confirmed',
+      successSubtitle: 'A calendar invite with a Microsoft Teams link will be sent to your email.',
+      successJoinPrefix: 'Or join the meeting directly: ',
+      summaryHeading: 'Review your booking',
+      summaryDate: 'Date',
+      summaryTime: 'Time',
+      summaryName: 'Name',
+      summaryEmail: 'Email',
+      summaryCompany: 'Company',
+    },
+    fr: {
+      loadingTimes: 'Chargement des horaires disponibles…',
+      fallbackTitle: 'Réservation en ligne temporairement indisponible',
+      fallbackBody: 'Veuillez réessayer dans un instant ou nous contacter directement pour planifier un appel.',
+      step1Title: 'Date et heure',
+      step2Title: 'Vos coordonnées',
+      step3Title: 'Confirmation',
+      step4Title: 'Confirmé',
+      monthsLong: ['janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+                   'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'],
+      weekdaysShort: ['DI', 'LU', 'MA', 'ME', 'JE', 'VE', 'SA'],
+      weekdaysLong: ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'],
+      pickADate: 'Sélectionnez une date pour voir les horaires disponibles.',
+      noTimesForDate: 'Aucun horaire disponible à cette date.',
+      timesShownIn: 'Horaires affichés en {tz} (votre heure locale)',
+      fields: {
+        firstName: 'Prénom',
+        lastName: 'Nom',
+        email: 'E-mail professionnel',
+        company: 'Entreprise',
+        phone: 'Téléphone',
+        notes: 'Parlez-nous de votre situation',
+      },
+      required: 'requis',
+      continueButton: 'Continuer',
+      backButton: 'Retour',
+      confirmButton: 'Confirmer la réservation',
+      submittingButton: 'Envoi en cours…',
+      successTitle: 'Réservation confirmée',
+      successSubtitle: 'Une invitation avec un lien Microsoft Teams sera envoyée à votre adresse e-mail.',
+      successJoinPrefix: 'Ou rejoignez la réunion directement : ',
+      summaryHeading: 'Vérifiez votre réservation',
+      summaryDate: 'Date',
+      summaryTime: 'Heure',
+      summaryName: 'Nom',
+      summaryEmail: 'E-mail',
+      summaryCompany: 'Entreprise',
+    },
+  };
+
+  /**
+   * The active label set. Defaults to English and is repointed to the detected
+   * locale's dictionary during init, before the first render. Declared `let`
+   * so every existing `LABELS.*` reference in the render code stays unchanged.
+   */
+  let LABELS: LabelSet = DICT.en;
+
+  /**
+   * BCP 47 tag for locale-aware Intl.DateTimeFormat (times panel timezone label,
+   * summary date/time). Set alongside LABELS in init.
+   */
+  let LOCALE_TAG = 'en-US';
 
   // ------------------------------------------------------------------------
   // Types and state
@@ -118,6 +230,7 @@
   interface State {
     step: Step;
     tenant: string;
+    locale: 'en' | 'fr';
     slots: SlotMap;
     selectedDate: string | null;
     selectedTime: string | null;
@@ -136,6 +249,7 @@
   const state: State = {
     step: 1,
     tenant: '',
+    locale: 'en',
     slots: {},
     selectedDate: null,
     selectedTime: null,
@@ -188,11 +302,53 @@
     }
 
     state.tenant = tenant;
+
+    // Locale selection. Detect once at init and point LABELS/LOCALE_TAG at the
+    // chosen dictionary before the first render. The AfricaDemo language toggle
+    // is a full navigation (French at "/", English at "/en/"), so the widget
+    // re-initializes on switch and a read-at-init is sufficient — no observer.
+    const locale = detectLocale(mountEl);
+    state.locale = locale;
+    LABELS = DICT[locale];
+    LOCALE_TAG = locale === 'fr' ? 'fr-FR' : 'en-US';
+
     mountEl.classList.add('bw-container');
+    // Scope the widget's own language for assistive tech, independent of the
+    // host page (the widget may render French inside an otherwise-English page
+    // or vice versa).
+    mountEl.setAttribute('lang', locale);
 
     injectStylesheet();
     void fetchSlots();
     render();
+  }
+
+  /**
+   * Resolve the widget's display locale to 'en' or 'fr'. First present, valid
+   * signal wins; English is the floor.
+   *
+   *   1. data-lang on the mount element — explicit, set by the host page (an
+   *      Astro page can emit its own known locale: data-lang={locale}).
+   *   2. <html lang> — the language the host document declares (AfricaDemo sets
+   *      this on every page), so detection works even without data-lang.
+   *   3. navigator.language — the visitor's browser preference, last resort.
+   *
+   * Region subtags are ignored (fr-CI, en-GB → fr, en). Anything not resolving
+   * to one of the two supported languages falls through to English.
+   */
+  function detectLocale(el: HTMLElement): 'en' | 'fr' {
+    const candidates = [
+      el.getAttribute('data-lang'),
+      document.documentElement.getAttribute('lang'),
+      typeof navigator !== 'undefined' ? navigator.language : null,
+    ];
+    for (const raw of candidates) {
+      if (typeof raw !== 'string') continue;
+      const base = raw.trim().toLowerCase().split('-')[0];
+      if (base === 'fr') return 'fr';
+      if (base === 'en') return 'en';
+    }
+    return 'en';
   }
 
   function injectStylesheet(): void {
@@ -808,7 +964,7 @@
   function humanTimezoneLabel(): string {
     try {
       const dt = new Date();
-      const parts = new Intl.DateTimeFormat('en-US', {
+      const parts = new Intl.DateTimeFormat(LOCALE_TAG, {
         timeZoneName: 'long',
       }).formatToParts(dt);
       const tzPart = parts.find((p) => p.type === 'timeZoneName')?.value;
@@ -831,15 +987,16 @@
   }
 
   function formatLocalTime(dt: Date): string {
-    return new Intl.DateTimeFormat('en-US', {
+    // hour12 left unset so the locale decides: en-US → 12-hour (2:00 PM),
+    // fr-FR → 24-hour (14:00), which is what each audience expects.
+    return new Intl.DateTimeFormat(LOCALE_TAG, {
       hour: 'numeric',
       minute: '2-digit',
-      hour12: true,
     }).format(dt);
   }
 
   function formatLocalDate(dt: Date): string {
-    return new Intl.DateTimeFormat('en-US', {
+    return new Intl.DateTimeFormat(LOCALE_TAG, {
       weekday: 'long',
       month: 'long',
       day: 'numeric',

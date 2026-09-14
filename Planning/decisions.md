@@ -344,6 +344,43 @@ The origin is captured in `CreateBooking` (sanitized, length-capped at 200) and 
 
 ---
 
+## ADR-0016: Widget localization (English/French), locale detected at runtime
+
+**Date:** 2026-09-14
+**Status:** Accepted
+
+**Context.** The Onshore Africa site (`onshoreafrica.com`, tenant `onshore-africa`) is bilingual — French at the site root, English under `/en/` — and sets `<html lang>` on every page. Bookings initiated from a French page should present the widget (prompts, labels, dates) in French; everything else defaults to English.
+
+**Decision.** Localize the **widget UI only**, with the locale detected client-side at init. Support exactly two languages, `en` (default) and `fr`.
+
+- The widget's existing single `LABELS` object became a per-locale `DICT: Record<'en'|'fr', LabelSet>`; `LABELS` is repointed at the chosen dictionary before first render, so no render code changed.
+- Locale detection precedence (first valid wins, English is the floor): `data-lang` on the mount element → host document `<html lang>` → `navigator.language`. Region subtags ignored (`fr-CI` → `fr`).
+- The three `Intl.DateTimeFormat('en-US', …)` calls now use the detected BCP-47 tag, so French gets native month/weekday names and 24-hour time automatically. `hour12` is left unset so each locale uses its own convention.
+- No reactive observer: the AfricaDemo language toggle is a full navigation, so the widget re-initializes on switch and read-at-init suffices.
+- The widget sets `lang` on its own container for assistive tech, independent of the host page.
+
+**Server-side notes stay English.** The `Source: | Company: | Details:` block written into the appointment (ADR-0015) is **internal-facing** (staff read it in the Teams invite), so it is not localized. The customer-facing form fields they type into are all widget-side and do get French.
+
+**Embed contract (opt-in):**
+```html
+<div id="booking-widget" data-tenant="onshore-africa" data-lang="fr"></div>
+```
+`data-lang` is optional; without it the widget reads `<html lang>`, so an Astro page that already declares its locale works with no extra attribute. Passing `data-lang={locale}` explicitly is recommended.
+
+**Alternatives.**
+- *Localize server-side too (send locale on the booking payload, translate the notes block).* Rejected: mixes a customer-facing concern into an operator-facing field for no staff benefit; owner confirmed internal notes remain English.
+- *Server-detected locale from `Accept-Language`.* The widget owns all display strings and formatting; detecting on the client (where `<html lang>` and the toggle live) is simpler and more accurate.
+- *Full i18n framework.* Overkill for two languages and ~30 strings already centralized in one object.
+
+**Rationale.** The string-centralization was already in place (a comment in the widget anticipated exactly this), so the change is low-risk and mostly copy. Runtime detection keeps the code brand- and site-neutral (ADR-0014): no site names or locale values are hardcoded; the host page supplies the signal.
+
+**Consequences.**
+- French copy is a **best-effort first pass** by the implementer, explicitly pending review by the owner of the AfricaDemo French lexicon (`lexicon-fr.md`, `check-prohibitions` rule `fr-typography`). The two dictionaries must stay structurally identical (same keys; 12 months; 7 weekdays, Sunday-first to match the calendar grid offset).
+- Adding a third language later is a new `DICT` entry plus a `detectLocale` branch — no structural change.
+- French typography: labels never receive an appended colon in render code, so the only in-string colon (`successJoinPrefix`) uses U+00A0 before `:` per the site convention.
+
+---
+
 ## Open decisions (not yet ADRs)
 
 | Topic | Status |
