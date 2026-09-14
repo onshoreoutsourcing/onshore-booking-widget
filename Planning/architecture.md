@@ -170,9 +170,26 @@ The system is multi-tenant from Phase 1: a single Functions App deployment can s
     "label": "Meet Onshore",
     "allowedOrigins": ["https://meetonshore.com"],
     "requiredStaffEmails": ["sales@onshoreoutsourcing.com"]
+  },
+  {
+    "slug": "onshore-africa",
+    "businessId": "OnshoreAfrica@onshoreoutsourcing.com",
+    "serviceId": "462b4aad-d880-4877-91fa-3a1a0422dd15",
+    "label": "Onshore Africa",
+    "allowedOrigins": ["https://www.onshoreafrica.com"],
+    "requiredStaffEmails": ["michael.kohio@onshoreoutsourcing.com"]
   }
 ]
 ```
+
+> The `onshore-africa` entry is a real production tenant serving a bilingual
+> (French/English) site. Its `serviceId` intentionally matches `meet-onshore`'s:
+> Microsoft reuses that GUID for the auto-created default "Consultation" service
+> across businesses. This is harmless because appointment creation routes by
+> `businessId` (in the request path), not `serviceId` — distinct businesses,
+> distinct calendars. See ADR-0016 for the widget-side French/English
+> localization the Africa site relies on (locale is detected client-side; the
+> tenant config is unaffected).
 
 The `serviceId` is the GUID of a Microsoft Bookings service under the business — Bookings supports multiple services per business (e.g., "30-Minute Discovery Call" vs "60-Minute Deep Dive"). Each tenant binds to one. To find a service ID, query `GET /solutions/bookingBusinesses/{businessId}/services` against Microsoft Graph; the response includes the GUIDs.
 
